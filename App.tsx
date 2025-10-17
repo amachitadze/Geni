@@ -11,7 +11,13 @@ import BirthdayNotifier from './components/BirthdayNotifier';
 import GoogleSearchPanel from './components/GoogleSearchPanel';
 import ImportModal from './components/ImportModal';
 import ExportModal from './components/ExportModal';
+import AuthModal from './components/AuthModal';
 import { decryptData } from './utils/crypto';
+
+import { onAuthStateChanged, signOut, User } from "firebase/auth";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { auth, db } from "./firebase/config";
+
 
 // Allow TypeScript to recognize the libraries loaded from CDN
 declare const html2canvas: any;
@@ -103,6 +109,11 @@ const DocumentTextIcon: React.FC<{ className?: string }> = ({ className }) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
 );
+const LogoutIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+    </svg>
+);
 
 const validatePeopleData = (data: any): { isValid: boolean; error: string | null } => {
     if (!data || typeof data.people !== 'object' || !Array.isArray(data.rootIdStack)) {
@@ -190,8 +201,10 @@ const getFamilyUnitFromConnection = (id1: string, id2: string, peopleData: Peopl
 function App() {
   const [people, setPeople] = useState<People>({});
   const [rootIdStack, setRootIdStack] = useState<string[]>(['root']);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const storedTheme = localStorage.getItem('familyTreeTheme');
@@ -201,7 +214,9 @@ function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  const [viewMode, setViewMode] = useState<'default' | 'compact'>('default');
+  const [viewMode, setViewMode] = useState<'default' | 'compact'>(() => {
+    return (localStorage.getItem('familyTreeViewMode') as 'default' | 'compact') || 'default';
+  });
 
   const rootId = rootIdStack[rootIdStack.length - 1];
 
@@ -276,6 +291,10 @@ function App() {
     }
     localStorage.setItem('familyTreeTheme', theme);
   }, [theme]);
+  
+  useEffect(() => {
+    localStorage.setItem('familyTreeViewMode', viewMode);
+  }, [viewMode]);
 
   // PWA install prompt handler
   useEffect(() => {
@@ -297,65 +316,72 @@ function App() {
     }
   }, []);
 
-  // Load data from localStorage on initial mount
+  // Firebase Auth State Listener
   useEffect(() => {
-    try {
-      const savedData = localStorage.getItem('familyTree');
-      const savedViewMode = localStorage.getItem('familyTreeViewMode') as 'default' | 'compact' | null;
-      const savedLastUpdated = localStorage.getItem('familyTreeLastUpdated');
-      
-      setViewMode(savedViewMode || 'default');
-      setLastUpdated(savedLastUpdated);
-
-      if (savedData) {
-        const { people: savedPeople, rootIdStack: savedRootIdStack } = JSON.parse(savedData);
-        setPeople(savedPeople || {});
-        setRootIdStack(savedRootIdStack || ['root']);
-      } else {
-        const initialPeople: People = {
-          'root': {
-            id: 'root',
-            firstName: 'დამფუძნებელი',
-            lastName: 'გვარი',
-            gender: Gender.Male,
-            children: [],
-            parentIds: [],
-            exSpouseIds: [],
-            birthDate: '1950-01-01',
-            bio: 'ამ გენეალოგიური ხის საწყისი წერტილი.',
-            imageUrl: `https://avatar.iran.liara.run/public/boy?username=Founder`
-          },
-        };
-        setPeople(initialPeople);
-        setRootIdStack(['root']);
-      }
-    } catch (error: any) {
-      console.error("Failed to load data from localStorage:", error);
-      // Fallback to initial state if localStorage is corrupt
-      const initialPeople: People = {
-          'root': { id: 'root', firstName: 'დამფუძნებელი', lastName: 'გვარი', gender: Gender.Male, children: [], parentIds: [], exSpouseIds: [] },
-      };
-      setPeople(initialPeople);
-      setRootIdStack(['root']);
-    } finally {
-      setIsInitialLoad(false);
-    }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
+        setIsAuthLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Save core data to localStorage whenever it changes
+  // Firebase Firestore Data Listener
   useEffect(() => {
-    if (isInitialLoad) return;
-    try {
-      const dataToSave = JSON.stringify({ people, rootIdStack });
-      const timestamp = new Date().toISOString();
-      localStorage.setItem('familyTree', dataToSave);
-      localStorage.setItem('familyTreeViewMode', viewMode);
-      localStorage.setItem('familyTreeLastUpdated', timestamp);
-      setLastUpdated(timestamp);
-    } catch (error: any) {
-      console.error("Failed to save data to localStorage:", error);
+    if (!user) {
+        setPeople({});
+        setRootIdStack(['root']);
+        return;
+    };
+
+    const docRef = doc(db, "familyTrees", user.uid);
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            setPeople(data.people || {});
+            setRootIdStack(data.rootIdStack || ['root']);
+            setLastUpdated(data.lastUpdated || new Date().toISOString());
+        } else {
+            console.log("No such document! Creating initial tree.");
+            const initialPeople: People = {
+              'root': {
+                id: 'root',
+                firstName: 'დამფუძნებელი',
+                lastName: 'გვარი',
+                gender: Gender.Male,
+                children: [],
+                parentIds: [],
+                exSpouseIds: [],
+                birthDate: '1950-01-01',
+                bio: 'ამ გენეალოგიური ხის საწყისი წერტილი.',
+                imageUrl: `https://avatar.iran.liara.run/public/boy?username=Founder`
+              },
+            };
+            const initialStack = ['root'];
+            saveDataToFirestore(initialPeople, initialStack);
+        }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+  
+  const saveDataToFirestore = async (updatedPeople: People, updatedRootIdStack: string[]) => {
+    if (!user) {
+        console.error("Cannot save data, no user logged in.");
+        return;
     }
-  }, [people, rootIdStack, viewMode, isInitialLoad]);
+    try {
+        const docRef = doc(db, "familyTrees", user.uid);
+        await setDoc(docRef, { 
+            people: updatedPeople, 
+            rootIdStack: updatedRootIdStack,
+            lastUpdated: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error("Error saving data to Firestore: ", error);
+        alert("მონაცემების შენახვა ვერ მოხერხდა. გთხოვთ, შეამოწმოთ ინტერნეტ კავშირი.");
+    }
+  };
+
 
   // Handle header collapse on scroll
   useEffect(() => {
@@ -398,23 +424,31 @@ function App() {
             if (prev.length > 0 && prev[prev.length - 1] === personId) {
                 return prev;
             }
-            return [...prev, personId];
+            const newStack = [...prev, personId]
+            saveDataToFirestore(people, newStack);
+            return newStack;
         });
-    }, [resetTransform]);
+    }, [resetTransform, people]);
 
   const navigateBack = useCallback(() => {
     setHighlightedPeople(null);
     resetTransform();
     if (rootIdStack.length > 1) {
-      setRootIdStack(prev => prev.slice(0, -1));
+      setRootIdStack(prev => {
+        const newStack = prev.slice(0, -1);
+        saveDataToFirestore(people, newStack);
+        return newStack;
+      });
     }
-  }, [rootIdStack, resetTransform]);
+  }, [rootIdStack, resetTransform, people]);
 
   const navigateToHome = useCallback(() => {
     setHighlightedPeople(null);
     resetTransform();
-    setRootIdStack(['root']);
-  }, [resetTransform]);
+    const newStack = ['root'];
+    saveDataToFirestore(people, newStack);
+    setRootIdStack(newStack);
+  }, [resetTransform, people]);
 
   const handleConnectionClick = useCallback((p1Id: string, p2Id: string, type: 'spouse' | 'parent-child') => {
     if (type === 'spouse') {
@@ -525,7 +559,7 @@ function App() {
           // Switch from zoom to pan smoothly
           const touch = e.touches[0];
           setIsPanning(true);
-          setPanStart({ x: touch.clientX - transform.x, y: touch.clientY - panStart.y });
+          setPanStart({ x: touch.clientX - transform.x, y: touch.clientY - transform.y });
       }
   };
 
@@ -582,8 +616,7 @@ function App() {
     const newStack = rootIdStack.filter(id => id !== personIdToDelete);
     const finalStack = newStack.length === 0 ? ['root'] : newStack;
 
-    setPeople(newPeople);
-    setRootIdStack(finalStack);
+    saveDataToFirestore(newPeople, finalStack);
 
     handleCloseModal();
     handleCloseDetailsModal();
@@ -600,122 +633,117 @@ function App() {
 
         let postSubmitAction: (() => void) | null = null;
 
-        setPeople(currentPeople => {
-            const updatedPeople = { ...currentPeople };
+        const updatedPeople = { ...people };
 
-            const contactInfoToSave = {
-                phone: details.contactInfo?.phone || undefined,
-                email: details.contactInfo?.email || undefined,
-                address: details.contactInfo?.address || undefined,
+        const contactInfoToSave = {
+            phone: details.contactInfo?.phone || undefined,
+            email: details.contactInfo?.email || undefined,
+            address: details.contactInfo?.address || undefined,
+        };
+
+        if (action === 'edit') {
+            const targetPerson = updatedPeople[personId];
+            updatedPeople[personId] = {
+                ...targetPerson,
+                ...formData,
+                birthDate: details.birthDate || undefined,
+                deathDate: details.deathDate || undefined,
+                imageUrl: details.imageUrl || undefined,
+                contactInfo: contactInfoToSave,
+                bio: details.bio || undefined,
+                notes: details.notes || undefined,
             };
+        } else if (action === 'add' && relationship) {
+            const anchorPerson = updatedPeople[personId];
 
-            if (action === 'edit') {
-                const targetPerson = updatedPeople[personId];
-                updatedPeople[personId] = {
-                    ...targetPerson,
-                    ...formData,
-                    birthDate: details.birthDate || undefined,
-                    deathDate: details.deathDate || undefined,
-                    imageUrl: details.imageUrl || undefined,
-                    contactInfo: contactInfoToSave,
-                    bio: details.bio || undefined,
-                    notes: details.notes || undefined,
-                };
-            } else if (action === 'add' && relationship) {
-                const anchorPerson = updatedPeople[personId];
+            switch (relationship) {
+                case 'spouse': {
+                    if (existingPersonId) {
+                        const newSpouse = updatedPeople[existingPersonId];
+                        updatedPeople[personId] = { ...anchorPerson, spouseId: existingPersonId, exSpouseIds: (anchorPerson.exSpouseIds || []).filter(id => id !== existingPersonId) };
+                        updatedPeople[existingPersonId] = { ...newSpouse, spouseId: personId, exSpouseIds: (newSpouse.exSpouseIds || []).filter(id => id !== personId) };
+                    } else {
+                        const newPersonId = `person_${Date.now()}`;
+                        const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
+                        updatedPeople[newPersonId] = { ...newPerson, spouseId: personId };
+                        
+                        let updatedAnchorPerson = { ...anchorPerson, spouseId: newPersonId };
+                        const oldSpouseId = anchorPerson.spouseId;
+                        if (oldSpouseId && updatedPeople[oldSpouseId]) {
+                            const oldSpouse = updatedPeople[oldSpouseId];
+                            updatedPeople[oldSpouseId] = { ...oldSpouse, spouseId: undefined, exSpouseIds: [...(oldSpouse.exSpouseIds || []), personId] };
+                            updatedAnchorPerson.exSpouseIds = [...(anchorPerson.exSpouseIds || []), oldSpouseId];
+                        }
+                        updatedPeople[personId] = updatedAnchorPerson;
+                    }
+                    break;
+                }
+                case 'child': {
+                    const newPersonId = `person_${Date.now()}`;
+                    const parentIdsForChild = [personId];
+                    if (anchorPerson.spouseId) {
+                        parentIdsForChild.push(anchorPerson.spouseId);
+                    }
+                    const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: parentIdsForChild, exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
+                    updatedPeople[newPersonId] = newPerson;
+                    
+                    updatedPeople[personId] = { ...anchorPerson, children: [...anchorPerson.children, newPersonId] };
 
-                switch (relationship) {
-                    case 'spouse': {
-                        if (existingPersonId) {
-                            const newSpouse = updatedPeople[existingPersonId];
-                            updatedPeople[personId] = { ...anchorPerson, spouseId: existingPersonId, exSpouseIds: (anchorPerson.exSpouseIds || []).filter(id => id !== existingPersonId) };
-                            updatedPeople[existingPersonId] = { ...newSpouse, spouseId: personId, exSpouseIds: (newSpouse.exSpouseIds || []).filter(id => id !== personId) };
-                        } else {
-                            const newPersonId = `person_${Date.now()}`;
-                            const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
-                            updatedPeople[newPersonId] = { ...newPerson, spouseId: personId };
-                            
-                            let updatedAnchorPerson = { ...anchorPerson, spouseId: newPersonId };
-                            const oldSpouseId = anchorPerson.spouseId;
-                            if (oldSpouseId && updatedPeople[oldSpouseId]) {
-                                const oldSpouse = updatedPeople[oldSpouseId];
-                                updatedPeople[oldSpouseId] = { ...oldSpouse, spouseId: undefined, exSpouseIds: [...(oldSpouse.exSpouseIds || []), personId] };
-                                updatedAnchorPerson.exSpouseIds = [...(anchorPerson.exSpouseIds || []), oldSpouseId];
+                    if (anchorPerson.spouseId) {
+                        const parent2 = updatedPeople[anchorPerson.spouseId];
+                        updatedPeople[anchorPerson.spouseId] = { ...parent2, children: [...parent2.children, newPersonId] };
+                    }
+                    break;
+                }
+                case 'parent': {
+                    const newPersonId = `person_${Date.now()}`;
+                    const newPerson: Person = { id: newPersonId, ...formData, children: [personId], parentIds: [], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
+                    
+                    const childPerson = updatedPeople[personId];
+                    const existingParentId = childPerson.parentIds[0] || null;
+                    
+                    updatedPeople[personId] = { ...childPerson, parentIds: [...childPerson.parentIds, newPersonId] };
+                    updatedPeople[newPersonId] = newPerson;
+
+                    if (existingParentId) {
+                        const existingParent = updatedPeople[existingParentId];
+                        updatedPeople[existingParentId] = { ...existingParent, spouseId: newPersonId };
+                        updatedPeople[newPersonId] = { ...newPerson, spouseId: existingParentId };
+                    }
+                    break;
+                }
+                case 'sibling': {
+                    const newPersonId = `person_${Date.now()}`;
+                    const anchorSibling = updatedPeople[personId];
+                    const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [...anchorSibling.parentIds], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
+                    updatedPeople[newPersonId] = newPerson;
+
+                    if (anchorSibling.parentIds.length > 0) {
+                        anchorSibling.parentIds.forEach(parentId => {
+                            const parent = updatedPeople[parentId];
+                            if (parent) {
+                                updatedPeople[parentId] = { ...parent, children: [...parent.children, newPersonId] };
                             }
-                            updatedPeople[personId] = updatedAnchorPerson;
-                        }
-                        break;
-                    }
-                    case 'child': {
-                        const newPersonId = `person_${Date.now()}`;
-                        const parentIdsForChild = [personId];
-                        if (anchorPerson.spouseId) {
-                            parentIdsForChild.push(anchorPerson.spouseId);
-                        }
-                        const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: parentIdsForChild, exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
-                        updatedPeople[newPersonId] = newPerson;
+                        });
                         
-                        updatedPeople[personId] = { ...anchorPerson, children: [...anchorPerson.children, newPersonId] };
-
-                        if (anchorPerson.spouseId) {
-                            const parent2 = updatedPeople[anchorPerson.spouseId];
-                            updatedPeople[anchorPerson.spouseId] = { ...parent2, children: [...parent2.children, newPersonId] };
-                        }
-                        break;
+                        const parentToNavigateTo = anchorSibling.parentIds[0];
+                        postSubmitAction = () => {
+                            navigateTo(parentToNavigateTo);
+                        };
                     }
-                    case 'parent': {
-                        const newPersonId = `person_${Date.now()}`;
-                        const newPerson: Person = { id: newPersonId, ...formData, children: [personId], parentIds: [], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
-                        
-                        const childPerson = updatedPeople[personId];
-                        const existingParentId = childPerson.parentIds[0] || null;
-                        
-                        updatedPeople[personId] = { ...childPerson, parentIds: [...childPerson.parentIds, newPersonId] };
-                        updatedPeople[newPersonId] = newPerson;
-
-                        if (existingParentId) {
-                            const existingParent = updatedPeople[existingParentId];
-                            updatedPeople[existingParentId] = { ...existingParent, spouseId: newPersonId };
-                            updatedPeople[newPersonId] = { ...newPerson, spouseId: existingParentId };
-                        }
-                        break;
-                    }
-                    case 'sibling': {
-                        const newPersonId = `person_${Date.now()}`;
-                        const anchorSibling = updatedPeople[personId];
-                        const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [...anchorSibling.parentIds], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
-                        updatedPeople[newPersonId] = newPerson;
-
-                        if (anchorSibling.parentIds.length > 0) {
-                            anchorSibling.parentIds.forEach(parentId => {
-                                const parent = updatedPeople[parentId];
-                                if (parent) {
-                                    updatedPeople[parentId] = { ...parent, children: [...parent.children, newPersonId] };
-                                }
-                            });
-                            
-                            const parentToNavigateTo = anchorSibling.parentIds[0];
-                            postSubmitAction = () => {
-                                navigateTo(parentToNavigateTo);
-                            };
-                        }
-                        break;
-                    }
+                    break;
                 }
             }
-
-            return updatedPeople;
-        });
+        }
+        
+        saveDataToFirestore(updatedPeople, rootIdStack);
 
         if (postSubmitAction) {
-            // Use setTimeout to ensure the state update from setPeople is processed
-            // before navigating, which triggers a re-render with the new rootId.
-            // This fixes the issue where newly added siblings wouldn't appear immediately.
             setTimeout(postSubmitAction, 0);
         }
 
         handleCloseModal();
-    }, [modalState.context, handleCloseModal, navigateTo]);
+    }, [modalState.context, handleCloseModal, navigateTo, people, rootIdStack]);
   
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
@@ -781,8 +809,7 @@ function App() {
     try {
       const decryptedString = await decryptData(encryptedData, password);
       const { people: sharedPeople, rootIdStack: sharedRootIdStack } = JSON.parse(decryptedString);
-      setPeople(sharedPeople);
-      setRootIdStack(sharedRootIdStack);
+      saveDataToFirestore(sharedPeople, sharedRootIdStack);
       setIsPasswordPromptOpen(false);
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -893,12 +920,11 @@ function App() {
               }
 
               if (fileAction === 'import') {
-                setPeople(importedData.people);
-                setRootIdStack(importedData.rootIdStack);
+                saveDataToFirestore(importedData.people, importedData.rootIdStack);
                 alert("მონაცემები წარმატებით იმპორტირდა.");
               } else if (fileAction === 'merge') {
                 const mergedPeople = mergePeopleData(people, importedData.people);
-                setPeople(mergedPeople);
+                saveDataToFirestore(mergedPeople, rootIdStack);
                 alert("მონაცემები წარმატებით შეერწყა.");
               }
           } catch (error: any) {
@@ -977,6 +1003,15 @@ function App() {
     const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
     window.open(mapUrl, '_blank', 'noopener,noreferrer');
     handleCloseDetailsModal();
+  };
+  
+  const handleLogout = async () => {
+      try {
+          await signOut(auth);
+          // App will re-render due to onAuthStateChanged
+      } catch (error) {
+          console.error("Error signing out: ", error);
+      }
   };
   
   const formatTimestamp = (isoString: string | null): string => {
@@ -1237,12 +1272,16 @@ const peopleWithBirthdays = useMemo(() => {
     });
 }, [people]);
 
-  if (isInitialLoad && !encryptedData) {
+  if (isAuthLoading) {
     return (
       <div className="h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <p className="text-gray-800 dark:text-white text-xl">იტვირთება...</p>
       </div>
     );
+  }
+
+  if (!user) {
+    return <AuthModal />;
   }
 
   return (
@@ -1280,6 +1319,12 @@ const peopleWithBirthdays = useMemo(() => {
                         <button onClick={() => setIsSettingsOpen(prev => !prev)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" title="პარამეტრები"><SettingsIcon className="w-6 h-6"/></button>
                         {isSettingsOpen && (
                             <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg z-20">
+                                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate" title={user.email || ''}>
+                                        {user.email}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">ავტორიზებული</p>
+                                </div>
                                 <ul className="py-1 text-gray-700 dark:text-gray-300">
                                     <li className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">მენიუ</li>
                                     <li><button onClick={() => { setIsShareModalOpen(true); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><ShareIcon className="w-5 h-5"/><span>გაზიარება</span></button></li>
@@ -1294,6 +1339,8 @@ const peopleWithBirthdays = useMemo(() => {
                                     <li className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">ინტერფეისი</li>
                                     <li><button onClick={() => setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'))} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"><span>თემის შეცვლა</span> {theme === 'dark' ? <SunIcon className="w-5 h-5 text-yellow-400"/> : <MoonIcon className="w-5 h-5 text-indigo-500"/>}</button></li>
                                     <li><button onClick={() => setViewMode(prev => prev === 'default' ? 'compact' : 'default')} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"><span>კომპაქტური რეჟიმი</span> {viewMode === 'compact' ? <ViewNormalIcon className="w-5 h-5"/> : <ViewCompactIcon className="w-5 h-5"/>}</button></li>
+                                     <li><hr className="my-1 border-gray-200 dark:border-gray-700" /></li>
+                                    <li><button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 flex items-center gap-3 transition-colors"><LogoutIcon className="w-5 h-5"/><span>გასვლა</span></button></li>
                                 </ul>
                                 <div className="px-4 py-2 text-xs text-center text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-700">
                                     ბოლოს განახლდა: {formatTimestamp(lastUpdated)}

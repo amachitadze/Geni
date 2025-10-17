@@ -7,6 +7,7 @@ const urlsToCache = [
   '/App.tsx',
   '/types.ts',
   '/utils/crypto.ts',
+  '/firebase/config.ts',
   '/components/TreeNode.tsx',
   '/components/PersonCard.tsx',
   '/components/AddPersonModal.tsx',
@@ -18,6 +19,7 @@ const urlsToCache = [
   '/components/GoogleSearchPanel.tsx',
   '/components/ImportModal.tsx',
   '/components/ExportModal.tsx',
+  '/components/AuthModal.tsx',
   '/components/charts/DoughnutChart.tsx',
   '/components/charts/BarChart.tsx',
   '/components/charts/GenerationChart.tsx',
@@ -31,7 +33,10 @@ const urlsToCache = [
   'https://aistudiocdn.com/react@^19.1.1',
   'https://aistudiocdn.com/react-dom@^19.1.1/',
   'https://i.postimg.cc/fyGRn3Dd/geni.png',
-  'https://avatar.iran.liara.run/public/boy?username=Founder'
+  'https://avatar.iran.liara.run/public/boy?username=Founder',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
 ];
 
 self.addEventListener('install', event => {
