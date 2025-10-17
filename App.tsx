@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { Person, People, Gender, ModalState, Relationship } from './types';
@@ -14,14 +15,12 @@ import ExportModal from './components/ExportModal';
 import AuthModal from './components/AuthModal';
 import { decryptData } from './utils/crypto';
 
-import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { auth, db } from "./firebase/config";
-
 
 // Allow TypeScript to recognize the libraries loaded from CDN
 declare const html2canvas: any;
 declare const jspdf: any;
+declare const netlifyIdentity: any;
+
 
 const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24" stroke="currentColor" strokeWidth={2}>
@@ -203,7 +202,7 @@ function App() {
   const [rootIdStack, setRootIdStack] = useState<string[]>(['root']);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -316,72 +315,102 @@ function App() {
     }
   }, []);
 
-  // Firebase Auth State Listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        setUser(currentUser);
-        setIsAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Firebase Firestore Data Listener
-  useEffect(() => {
-    if (!user) {
-        setPeople({});
-        setRootIdStack(['root']);
-        return;
-    };
-
-    const docRef = doc(db, "familyTrees", user.uid);
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            setPeople(data.people || {});
-            setRootIdStack(data.rootIdStack || ['root']);
-            setLastUpdated(data.lastUpdated || new Date().toISOString());
-        } else {
-            console.log("No such document! Creating initial tree.");
-            const initialPeople: People = {
-              'root': {
-                id: 'root',
-                firstName: 'დამფუძნებელი',
-                lastName: 'გვარი',
-                gender: Gender.Male,
-                children: [],
-                parentIds: [],
-                exSpouseIds: [],
-                birthDate: '1950-01-01',
-                bio: 'ამ გენეალოგიური ხის საწყისი წერტილი.',
-                imageUrl: `https://avatar.iran.liara.run/public/boy?username=Founder`
-              },
-            };
-            const initialStack = ['root'];
-            saveDataToFirestore(initialPeople, initialStack);
-        }
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-  
-  const saveDataToFirestore = async (updatedPeople: People, updatedRootIdStack: string[]) => {
+  const saveDataToLocalStorage = (updatedPeople: People, updatedRootIdStack: string[]) => {
     if (!user) {
         console.error("Cannot save data, no user logged in.");
         return;
     }
     try {
-        const docRef = doc(db, "familyTrees", user.uid);
-        await setDoc(docRef, { 
-            people: updatedPeople, 
-            rootIdStack: updatedRootIdStack,
-            lastUpdated: new Date().toISOString()
-        });
+        const dataToSave = JSON.stringify({ people: updatedPeople, rootIdStack: updatedRootIdStack });
+        localStorage.setItem(`familyTreeData_${user.id}`, dataToSave);
+        const newTimestamp = new Date().toISOString();
+        localStorage.setItem(`familyTreeMeta_${user.id}`, JSON.stringify({ lastUpdated: newTimestamp }));
+        setLastUpdated(newTimestamp);
     } catch (error) {
-        console.error("Error saving data to Firestore: ", error);
-        alert("მონაცემების შენახვა ვერ მოხერხდა. გთხოვთ, შეამოწმოთ ინტერნეტ კავშირი.");
+        console.error("Error saving data to Local Storage: ", error);
+        alert("მონაცემების შენახვა ვერ მოხერხდა.");
     }
   };
 
+  // Netlify Identity Auth and Data Listener
+  useEffect(() => {
+    const createNewTreeForUser = (userId: string) => {
+        const initialPeople: People = {
+          'root': {
+            id: 'root',
+            firstName: 'დამფუძნებელი',
+            lastName: 'გვარი',
+            gender: Gender.Male,
+            children: [],
+            parentIds: [],
+            exSpouseIds: [],
+            birthDate: '1950-01-01',
+            bio: 'ამ გენეალოგიური ხის საწყისი წერტილი.',
+            imageUrl: `https://avatar.iran.liara.run/public/boy?username=Founder`
+          },
+        };
+        const initialStack = ['root'];
+        setPeople(initialPeople);
+        setRootIdStack(initialStack);
+        
+        const dataToSave = JSON.stringify({ people: initialPeople, rootIdStack: initialStack });
+        localStorage.setItem(`familyTreeData_${userId}`, dataToSave);
+        const newTimestamp = new Date().toISOString();
+        localStorage.setItem(`familyTreeMeta_${userId}`, JSON.stringify({ lastUpdated: newTimestamp }));
+        setLastUpdated(newTimestamp);
+    };
+
+    const handleAuthChange = (currentUser: any) => {
+      setUser(currentUser);
+      setIsAuthLoading(false);
+      if (currentUser) {
+        const storedData = localStorage.getItem(`familyTreeData_${currentUser.id}`);
+        if (storedData) {
+          try {
+            const { people: loadedPeople, rootIdStack: loadedRootIdStack } = JSON.parse(storedData);
+            setPeople(loadedPeople || {});
+            setRootIdStack(loadedRootIdStack || ['root']);
+            const lastUpdatedData = localStorage.getItem(`familyTreeMeta_${currentUser.id}`);
+            if (lastUpdatedData) {
+              setLastUpdated(JSON.parse(lastUpdatedData).lastUpdated);
+            }
+          } catch(e) {
+            console.error("Failed to parse data from localStorage", e);
+            createNewTreeForUser(currentUser.id);
+          }
+        } else {
+          createNewTreeForUser(currentUser.id);
+        }
+      } else {
+        setPeople({});
+        setRootIdStack(['root']);
+        setLastUpdated(null);
+      }
+    };
+    
+    // Fix: Use netlifyIdentity directly as it's declared globally.
+    if (netlifyIdentity) {
+      netlifyIdentity.on('init', (currentUser: any) => handleAuthChange(currentUser));
+      netlifyIdentity.on('login', (currentUser: any) => {
+        handleAuthChange(currentUser);
+        netlifyIdentity.close();
+      });
+      netlifyIdentity.on('logout', () => handleAuthChange(null));
+      netlifyIdentity.init();
+    } else {
+        setIsAuthLoading(false);
+    }
+
+    return () => {
+      // Fix: Use netlifyIdentity directly as it's declared globally.
+      if(netlifyIdentity) {
+        netlifyIdentity.off('init');
+        netlifyIdentity.off('login');
+        netlifyIdentity.off('logout');
+      }
+    };
+  }, []);
+  
 
   // Handle header collapse on scroll
   useEffect(() => {
@@ -425,10 +454,10 @@ function App() {
                 return prev;
             }
             const newStack = [...prev, personId]
-            saveDataToFirestore(people, newStack);
+            saveDataToLocalStorage(people, newStack);
             return newStack;
         });
-    }, [resetTransform, people]);
+    }, [resetTransform, people, user]);
 
   const navigateBack = useCallback(() => {
     setHighlightedPeople(null);
@@ -436,19 +465,19 @@ function App() {
     if (rootIdStack.length > 1) {
       setRootIdStack(prev => {
         const newStack = prev.slice(0, -1);
-        saveDataToFirestore(people, newStack);
+        saveDataToLocalStorage(people, newStack);
         return newStack;
       });
     }
-  }, [rootIdStack, resetTransform, people]);
+  }, [rootIdStack, resetTransform, people, user]);
 
   const navigateToHome = useCallback(() => {
     setHighlightedPeople(null);
     resetTransform();
     const newStack = ['root'];
-    saveDataToFirestore(people, newStack);
+    saveDataToLocalStorage(people, newStack);
     setRootIdStack(newStack);
-  }, [resetTransform, people]);
+  }, [resetTransform, people, user]);
 
   const handleConnectionClick = useCallback((p1Id: string, p2Id: string, type: 'spouse' | 'parent-child') => {
     if (type === 'spouse') {
@@ -616,11 +645,13 @@ function App() {
     const newStack = rootIdStack.filter(id => id !== personIdToDelete);
     const finalStack = newStack.length === 0 ? ['root'] : newStack;
 
-    saveDataToFirestore(newPeople, finalStack);
+    setPeople(newPeople);
+    setRootIdStack(finalStack);
+    saveDataToLocalStorage(newPeople, finalStack);
 
     handleCloseModal();
     handleCloseDetailsModal();
-  }, [people, rootIdStack, handleCloseModal, handleCloseDetailsModal]);
+  }, [people, rootIdStack, handleCloseModal, handleCloseDetailsModal, user]);
 
     const handleFormSubmit = useCallback((
         formData: Partial<{ firstName: string; lastName: string; gender: Gender; }>,
@@ -633,7 +664,7 @@ function App() {
 
         let postSubmitAction: (() => void) | null = null;
 
-        const updatedPeople = { ...people };
+        const updatedPeople = JSON.parse(JSON.stringify(people));
 
         const contactInfoToSave = {
             phone: details.contactInfo?.phone || undefined,
@@ -736,14 +767,15 @@ function App() {
             }
         }
         
-        saveDataToFirestore(updatedPeople, rootIdStack);
+        setPeople(updatedPeople);
+        saveDataToLocalStorage(updatedPeople, rootIdStack);
 
         if (postSubmitAction) {
             setTimeout(postSubmitAction, 0);
         }
 
         handleCloseModal();
-    }, [modalState.context, handleCloseModal, navigateTo, people, rootIdStack]);
+    }, [modalState.context, handleCloseModal, navigateTo, people, rootIdStack, user]);
   
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
@@ -809,7 +841,9 @@ function App() {
     try {
       const decryptedString = await decryptData(encryptedData, password);
       const { people: sharedPeople, rootIdStack: sharedRootIdStack } = JSON.parse(decryptedString);
-      saveDataToFirestore(sharedPeople, sharedRootIdStack);
+      setPeople(sharedPeople);
+      setRootIdStack(sharedRootIdStack);
+      saveDataToLocalStorage(sharedPeople, sharedRootIdStack);
       setIsPasswordPromptOpen(false);
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -920,11 +954,14 @@ function App() {
               }
 
               if (fileAction === 'import') {
-                saveDataToFirestore(importedData.people, importedData.rootIdStack);
+                setPeople(importedData.people);
+                setRootIdStack(importedData.rootIdStack);
+                saveDataToLocalStorage(importedData.people, importedData.rootIdStack);
                 alert("მონაცემები წარმატებით იმპორტირდა.");
               } else if (fileAction === 'merge') {
                 const mergedPeople = mergePeopleData(people, importedData.people);
-                saveDataToFirestore(mergedPeople, rootIdStack);
+                setPeople(mergedPeople);
+                saveDataToLocalStorage(mergedPeople, rootIdStack);
                 alert("მონაცემები წარმატებით შეერწყა.");
               }
           } catch (error: any) {
@@ -1005,13 +1042,11 @@ function App() {
     handleCloseDetailsModal();
   };
   
-  const handleLogout = async () => {
-      try {
-          await signOut(auth);
-          // App will re-render due to onAuthStateChanged
-      } catch (error) {
-          console.error("Error signing out: ", error);
-      }
+  const handleLogout = () => {
+    // Fix: Use netlifyIdentity directly as it's declared globally.
+    if (netlifyIdentity) {
+        netlifyIdentity.logout();
+    }
   };
   
   const formatTimestamp = (isoString: string | null): string => {
