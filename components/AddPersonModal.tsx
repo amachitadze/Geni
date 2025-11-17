@@ -12,7 +12,6 @@ interface AddPersonModalProps {
       imageUrl: string; 
       contactInfo: { phone: string; email: string; address: string; }; 
       bio: string;
-      notes: string;
     }>,
     relationship?: Relationship,
     existingPersonId?: string,
@@ -67,7 +66,6 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [bio, setBio] = useState('');
-  const [notes, setNotes] = useState('');
   
   // Modal state
   const [relationship, setRelationship] = useState<Relationship>('child');
@@ -93,7 +91,6 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
       setEmail('');
       setAddress('');
       setBio('');
-      setNotes('');
       setRelationship('child');
       setSpouseMode('new');
       setSelectedExSpouseId('');
@@ -112,7 +109,6 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
       setEmail(personToEdit.contactInfo?.email || '');
       setAddress(personToEdit.contactInfo?.address || '');
       setBio(personToEdit.bio || '');
-      setNotes(personToEdit.notes || '');
     } else if (context?.action === 'add') {
       setTitle('ნათესავის დამატება');
       setSubmitText('დამატება');
@@ -219,7 +215,6 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
         imageUrl,
         contactInfo: { phone, email, address },
         bio,
-        notes,
     };
 
     if (isEditMode) {
@@ -369,11 +364,6 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
                 <div>
                     <label htmlFor="bio" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">ბიოგრაფია</label>
                     <textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={3} placeholder="მოკლე ბიოგრაფია..." className={inputStyles}></textarea>
-                </div>
-                
-                <div>
-                    <label htmlFor="notes" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">პირადი ჩანაწერები/ისტორიები</label>
-                    <textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="დაამატეთ პირადი ჩანაწერები, ისტორიები ან საინტერესო ფაქტები..." className={inputStyles}></textarea>
                 </div>
 
                 {showGenderSelector && (

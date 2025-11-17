@@ -184,13 +184,6 @@ const DetailsModal: React.FC<DetailsModalProps> = ({ person, people, onClose, on
               <p className="whitespace-pre-wrap">{person.bio}</p>
             </div>
           )}
-
-          {person.notes && (
-            <div>
-              <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-100 border-b border-gray-300 dark:border-gray-700 pb-1 mb-2">პირადი ჩანაწერები</h3>
-              <p className="whitespace-pre-wrap">{person.notes}</p>
-            </div>
-          )}
           
           {exSpouses.length > 0 && (
             <div>

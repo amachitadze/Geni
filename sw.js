@@ -7,6 +7,8 @@ const urlsToCache = [
   '/App.tsx',
   '/types.ts',
   '/utils/crypto.ts',
+  '/components/LandingPage.tsx',
+  '/components/InitialView.tsx',
   '/components/TreeNode.tsx',
   '/components/PersonCard.tsx',
   '/components/AddPersonModal.tsx',
@@ -18,7 +20,6 @@ const urlsToCache = [
   '/components/GoogleSearchPanel.tsx',
   '/components/ImportModal.tsx',
   '/components/ExportModal.tsx',
-  '/components/AuthModal.tsx',
   '/components/charts/DoughnutChart.tsx',
   '/components/charts/BarChart.tsx',
   '/components/charts/GenerationChart.tsx',
@@ -33,7 +34,7 @@ const urlsToCache = [
   'https://aistudiocdn.com/react-dom@^19.1.1/',
   'https://i.postimg.cc/fyGRn3Dd/geni.png',
   'https://avatar.iran.liara.run/public/boy?username=Founder',
-  'https://identity.netlify.com/v1/netlify-identity-widget.js'
+  'https://i.postimg.cc/DZBW1Cbf/Geni-cover.png'
 ];
 
 self.addEventListener('install', event => {

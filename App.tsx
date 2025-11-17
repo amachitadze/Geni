@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { Person, People, Gender, ModalState, Relationship } from './types';
@@ -12,15 +11,13 @@ import BirthdayNotifier from './components/BirthdayNotifier';
 import GoogleSearchPanel from './components/GoogleSearchPanel';
 import ImportModal from './components/ImportModal';
 import ExportModal from './components/ExportModal';
-import AuthModal from './components/AuthModal';
+import LandingPage from './components/LandingPage';
+import InitialView from './components/InitialView';
 import { decryptData } from './utils/crypto';
-
 
 // Allow TypeScript to recognize the libraries loaded from CDN
 declare const html2canvas: any;
 declare const jspdf: any;
-declare const netlifyIdentity: any;
-
 
 const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24" stroke="currentColor" strokeWidth={2}>
@@ -37,10 +34,9 @@ const HomeIcon: React.FC<{ className?: string }> = ({ className }) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
     </svg>
 );
-const SettingsIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
     </svg>
 );
 const ExportIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -106,11 +102,6 @@ const GlobeIcon: React.FC<{ className?: string }> = ({ className }) => (
 const DocumentTextIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-    </svg>
-);
-const LogoutIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
     </svg>
 );
 
@@ -199,11 +190,11 @@ const getFamilyUnitFromConnection = (id1: string, id2: string, peopleData: Peopl
 
 function App() {
   const [people, setPeople] = useState<People>({});
-  const [rootIdStack, setRootIdStack] = useState<string[]>(['root']);
+  const [rootIdStack, setRootIdStack] = useState<string[]>([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-
-  const [user, setUser] = useState<any | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  
+  const [isViewingTree, setIsViewingTree] = useState(false);
 
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const storedTheme = localStorage.getItem('familyTreeTheme');
@@ -213,9 +204,7 @@ function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  const [viewMode, setViewMode] = useState<'default' | 'compact'>(() => {
-    return (localStorage.getItem('familyTreeViewMode') as 'default' | 'compact') || 'default';
-  });
+  const [viewMode, setViewMode] = useState<'default' | 'compact'>('default');
 
   const rootId = rootIdStack[rootIdStack.length - 1];
 
@@ -230,7 +219,7 @@ function App() {
   const [hoveredPersonId, setHoveredPersonId] = useState<string | null>(null);
 
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isStatisticsModalOpen, setIsStatisticsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -247,7 +236,7 @@ function App() {
   const pinchStartScaleRef = useRef<number>(1);
 
   const viewportRef = useRef<HTMLDivElement>(null);
-  const settingsRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileAction, setFileAction] = useState<'import' | 'merge' | null>(null);
 
@@ -290,10 +279,6 @@ function App() {
     }
     localStorage.setItem('familyTreeTheme', theme);
   }, [theme]);
-  
-  useEffect(() => {
-    localStorage.setItem('familyTreeViewMode', viewMode);
-  }, [viewMode]);
 
   // PWA install prompt handler
   useEffect(() => {
@@ -312,105 +297,59 @@ function App() {
     if (data) {
       setEncryptedData(decodeURIComponent(data));
       setIsPasswordPromptOpen(true);
+      setIsViewingTree(true);
     }
   }, []);
 
-  const saveDataToLocalStorage = (updatedPeople: People, updatedRootIdStack: string[]) => {
-    if (!user) {
-        console.error("Cannot save data, no user logged in.");
-        return;
-    }
-    try {
-        const dataToSave = JSON.stringify({ people: updatedPeople, rootIdStack: updatedRootIdStack });
-        localStorage.setItem(`familyTreeData_${user.id}`, dataToSave);
-        const newTimestamp = new Date().toISOString();
-        localStorage.setItem(`familyTreeMeta_${user.id}`, JSON.stringify({ lastUpdated: newTimestamp }));
-        setLastUpdated(newTimestamp);
-    } catch (error) {
-        console.error("Error saving data to Local Storage: ", error);
-        alert("მონაცემების შენახვა ვერ მოხერხდა.");
-    }
-  };
-
-  // Netlify Identity Auth and Data Listener
+  // Load data from localStorage on initial mount
   useEffect(() => {
-    const createNewTreeForUser = (userId: string) => {
-        const initialPeople: People = {
-          'root': {
-            id: 'root',
-            firstName: 'დამფუძნებელი',
-            lastName: 'გვარი',
-            gender: Gender.Male,
-            children: [],
-            parentIds: [],
-            exSpouseIds: [],
-            birthDate: '1950-01-01',
-            bio: 'ამ გენეალოგიური ხის საწყისი წერტილი.',
-            imageUrl: `https://avatar.iran.liara.run/public/boy?username=Founder`
-          },
-        };
-        const initialStack = ['root'];
-        setPeople(initialPeople);
-        setRootIdStack(initialStack);
-        
-        const dataToSave = JSON.stringify({ people: initialPeople, rootIdStack: initialStack });
-        localStorage.setItem(`familyTreeData_${userId}`, dataToSave);
-        const newTimestamp = new Date().toISOString();
-        localStorage.setItem(`familyTreeMeta_${userId}`, JSON.stringify({ lastUpdated: newTimestamp }));
-        setLastUpdated(newTimestamp);
-    };
+    try {
+      const savedData = localStorage.getItem('familyTree');
+      const savedViewMode = localStorage.getItem('familyTreeViewMode') as 'default' | 'compact' | null;
+      const savedLastUpdated = localStorage.getItem('familyTreeLastUpdated');
+      
+      setViewMode(savedViewMode || 'default');
+      setLastUpdated(savedLastUpdated);
 
-    const handleAuthChange = (currentUser: any) => {
-      setUser(currentUser);
-      setIsAuthLoading(false);
-      if (currentUser) {
-        const storedData = localStorage.getItem(`familyTreeData_${currentUser.id}`);
-        if (storedData) {
-          try {
-            const { people: loadedPeople, rootIdStack: loadedRootIdStack } = JSON.parse(storedData);
-            setPeople(loadedPeople || {});
-            setRootIdStack(loadedRootIdStack || ['root']);
-            const lastUpdatedData = localStorage.getItem(`familyTreeMeta_${currentUser.id}`);
-            if (lastUpdatedData) {
-              setLastUpdated(JSON.parse(lastUpdatedData).lastUpdated);
-            }
-          } catch(e) {
-            console.error("Failed to parse data from localStorage", e);
-            createNewTreeForUser(currentUser.id);
-          }
+      if (savedData) {
+        const { people: savedPeople, rootIdStack: savedRootIdStack } = JSON.parse(savedData);
+        if (savedPeople && Object.keys(savedPeople).length > 0) {
+            setPeople(savedPeople);
+            setRootIdStack(savedRootIdStack || ['root']);
         } else {
-          createNewTreeForUser(currentUser.id);
+            // Data is empty or corrupt
+            setPeople({});
+            setRootIdStack([]);
         }
       } else {
+        // No data saved, it's a fresh start
         setPeople({});
-        setRootIdStack(['root']);
-        setLastUpdated(null);
+        setRootIdStack([]);
       }
-    };
-    
-    // Fix: Use netlifyIdentity directly as it's declared globally.
-    if (netlifyIdentity) {
-      netlifyIdentity.on('init', (currentUser: any) => handleAuthChange(currentUser));
-      netlifyIdentity.on('login', (currentUser: any) => {
-        handleAuthChange(currentUser);
-        netlifyIdentity.close();
-      });
-      netlifyIdentity.on('logout', () => handleAuthChange(null));
-      netlifyIdentity.init();
-    } else {
-        setIsAuthLoading(false);
+    } catch (error: any) {
+      console.error("Failed to load data from localStorage:", error);
+      // Fallback to empty state if localStorage is corrupt
+      setPeople({});
+      setRootIdStack([]);
+    } finally {
+      setIsInitialLoad(false);
     }
-
-    return () => {
-      // Fix: Use netlifyIdentity directly as it's declared globally.
-      if(netlifyIdentity) {
-        netlifyIdentity.off('init');
-        netlifyIdentity.off('login');
-        netlifyIdentity.off('logout');
-      }
-    };
   }, []);
-  
+
+  // Save core data to localStorage whenever it changes
+  useEffect(() => {
+    if (isInitialLoad) return;
+    try {
+      const dataToSave = JSON.stringify({ people, rootIdStack });
+      const timestamp = new Date().toISOString();
+      localStorage.setItem('familyTree', dataToSave);
+      localStorage.setItem('familyTreeViewMode', viewMode);
+      localStorage.setItem('familyTreeLastUpdated', timestamp);
+      setLastUpdated(timestamp);
+    } catch (error: any) {
+      console.error("Failed to save data to localStorage:", error);
+    }
+  }, [people, rootIdStack, viewMode, isInitialLoad]);
 
   // Handle header collapse on scroll
   useEffect(() => {
@@ -434,15 +373,15 @@ function App() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-        if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
-            setIsSettingsOpen(false);
+        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+            setIsMenuOpen(false);
         }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
         document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [settingsRef]);
+  }, [menuRef]);
   
     const resetTransform = useCallback(() => setTransform({ scale: 1, x: 0, y: 0 }), []);
   
@@ -453,31 +392,23 @@ function App() {
             if (prev.length > 0 && prev[prev.length - 1] === personId) {
                 return prev;
             }
-            const newStack = [...prev, personId]
-            saveDataToLocalStorage(people, newStack);
-            return newStack;
+            return [...prev, personId];
         });
-    }, [resetTransform, people, user]);
+    }, [resetTransform]);
 
   const navigateBack = useCallback(() => {
     setHighlightedPeople(null);
     resetTransform();
     if (rootIdStack.length > 1) {
-      setRootIdStack(prev => {
-        const newStack = prev.slice(0, -1);
-        saveDataToLocalStorage(people, newStack);
-        return newStack;
-      });
+      setRootIdStack(prev => prev.slice(0, -1));
     }
-  }, [rootIdStack, resetTransform, people, user]);
+  }, [rootIdStack, resetTransform]);
 
   const navigateToHome = useCallback(() => {
     setHighlightedPeople(null);
     resetTransform();
-    const newStack = ['root'];
-    saveDataToLocalStorage(people, newStack);
-    setRootIdStack(newStack);
-  }, [resetTransform, people, user]);
+    setRootIdStack(['root']);
+  }, [resetTransform]);
 
   const handleConnectionClick = useCallback((p1Id: string, p2Id: string, type: 'spouse' | 'parent-child') => {
     if (type === 'spouse') {
@@ -643,19 +574,24 @@ function App() {
     delete newPeople[personIdToDelete];
     
     const newStack = rootIdStack.filter(id => id !== personIdToDelete);
-    const finalStack = newStack.length === 0 ? ['root'] : newStack;
+    // If the entire tree is deleted, reset to initial empty view
+    if (Object.keys(newPeople).length === 0) {
+        setPeople({});
+        setRootIdStack([]);
+    } else {
+        const finalStack = newStack.length === 0 ? ['root'] : newStack;
+        setPeople(newPeople);
+        setRootIdStack(finalStack);
+    }
 
-    setPeople(newPeople);
-    setRootIdStack(finalStack);
-    saveDataToLocalStorage(newPeople, finalStack);
 
     handleCloseModal();
     handleCloseDetailsModal();
-  }, [people, rootIdStack, handleCloseModal, handleCloseDetailsModal, user]);
+  }, [people, rootIdStack, handleCloseModal, handleCloseDetailsModal]);
 
     const handleFormSubmit = useCallback((
         formData: Partial<{ firstName: string; lastName: string; gender: Gender; }>,
-        details: Partial<{ birthDate: string; deathDate: string; imageUrl: string; contactInfo: { phone: string; email: string; address: string; }; bio: string; notes: string; }>,
+        details: Partial<{ birthDate: string; deathDate: string; imageUrl: string; contactInfo: { phone: string; email: string; address: string; }; bio: string; }>,
         relationship?: Relationship,
         existingPersonId?: string
     ) => {
@@ -664,118 +600,121 @@ function App() {
 
         let postSubmitAction: (() => void) | null = null;
 
-        const updatedPeople = JSON.parse(JSON.stringify(people));
+        setPeople(currentPeople => {
+            const updatedPeople = { ...currentPeople };
 
-        const contactInfoToSave = {
-            phone: details.contactInfo?.phone || undefined,
-            email: details.contactInfo?.email || undefined,
-            address: details.contactInfo?.address || undefined,
-        };
-
-        if (action === 'edit') {
-            const targetPerson = updatedPeople[personId];
-            updatedPeople[personId] = {
-                ...targetPerson,
-                ...formData,
-                birthDate: details.birthDate || undefined,
-                deathDate: details.deathDate || undefined,
-                imageUrl: details.imageUrl || undefined,
-                contactInfo: contactInfoToSave,
-                bio: details.bio || undefined,
-                notes: details.notes || undefined,
+            const contactInfoToSave = {
+                phone: details.contactInfo?.phone || undefined,
+                email: details.contactInfo?.email || undefined,
+                address: details.contactInfo?.address || undefined,
             };
-        } else if (action === 'add' && relationship) {
-            const anchorPerson = updatedPeople[personId];
 
-            switch (relationship) {
-                case 'spouse': {
-                    if (existingPersonId) {
-                        const newSpouse = updatedPeople[existingPersonId];
-                        updatedPeople[personId] = { ...anchorPerson, spouseId: existingPersonId, exSpouseIds: (anchorPerson.exSpouseIds || []).filter(id => id !== existingPersonId) };
-                        updatedPeople[existingPersonId] = { ...newSpouse, spouseId: personId, exSpouseIds: (newSpouse.exSpouseIds || []).filter(id => id !== personId) };
-                    } else {
-                        const newPersonId = `person_${Date.now()}`;
-                        const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
-                        updatedPeople[newPersonId] = { ...newPerson, spouseId: personId };
-                        
-                        let updatedAnchorPerson = { ...anchorPerson, spouseId: newPersonId };
-                        const oldSpouseId = anchorPerson.spouseId;
-                        if (oldSpouseId && updatedPeople[oldSpouseId]) {
-                            const oldSpouse = updatedPeople[oldSpouseId];
-                            updatedPeople[oldSpouseId] = { ...oldSpouse, spouseId: undefined, exSpouseIds: [...(oldSpouse.exSpouseIds || []), personId] };
-                            updatedAnchorPerson.exSpouseIds = [...(anchorPerson.exSpouseIds || []), oldSpouseId];
-                        }
-                        updatedPeople[personId] = updatedAnchorPerson;
-                    }
-                    break;
-                }
-                case 'child': {
-                    const newPersonId = `person_${Date.now()}`;
-                    const parentIdsForChild = [personId];
-                    if (anchorPerson.spouseId) {
-                        parentIdsForChild.push(anchorPerson.spouseId);
-                    }
-                    const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: parentIdsForChild, exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
-                    updatedPeople[newPersonId] = newPerson;
-                    
-                    updatedPeople[personId] = { ...anchorPerson, children: [...anchorPerson.children, newPersonId] };
+            if (action === 'edit') {
+                const targetPerson = updatedPeople[personId];
+                updatedPeople[personId] = {
+                    ...targetPerson,
+                    ...formData,
+                    birthDate: details.birthDate || undefined,
+                    deathDate: details.deathDate || undefined,
+                    imageUrl: details.imageUrl || undefined,
+                    contactInfo: contactInfoToSave,
+                    bio: details.bio || undefined,
+                };
+            } else if (action === 'add' && relationship) {
+                const anchorPerson = updatedPeople[personId];
 
-                    if (anchorPerson.spouseId) {
-                        const parent2 = updatedPeople[anchorPerson.spouseId];
-                        updatedPeople[anchorPerson.spouseId] = { ...parent2, children: [...parent2.children, newPersonId] };
-                    }
-                    break;
-                }
-                case 'parent': {
-                    const newPersonId = `person_${Date.now()}`;
-                    const newPerson: Person = { id: newPersonId, ...formData, children: [personId], parentIds: [], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
-                    
-                    const childPerson = updatedPeople[personId];
-                    const existingParentId = childPerson.parentIds[0] || null;
-                    
-                    updatedPeople[personId] = { ...childPerson, parentIds: [...childPerson.parentIds, newPersonId] };
-                    updatedPeople[newPersonId] = newPerson;
-
-                    if (existingParentId) {
-                        const existingParent = updatedPeople[existingParentId];
-                        updatedPeople[existingParentId] = { ...existingParent, spouseId: newPersonId };
-                        updatedPeople[newPersonId] = { ...newPerson, spouseId: existingParentId };
-                    }
-                    break;
-                }
-                case 'sibling': {
-                    const newPersonId = `person_${Date.now()}`;
-                    const anchorSibling = updatedPeople[personId];
-                    const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [...anchorSibling.parentIds], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined, notes: details.notes || undefined } as Person;
-                    updatedPeople[newPersonId] = newPerson;
-
-                    if (anchorSibling.parentIds.length > 0) {
-                        anchorSibling.parentIds.forEach(parentId => {
-                            const parent = updatedPeople[parentId];
-                            if (parent) {
-                                updatedPeople[parentId] = { ...parent, children: [...parent.children, newPersonId] };
+                switch (relationship) {
+                    case 'spouse': {
+                        if (existingPersonId) {
+                            const newSpouse = updatedPeople[existingPersonId];
+                            updatedPeople[personId] = { ...anchorPerson, spouseId: existingPersonId, exSpouseIds: (anchorPerson.exSpouseIds || []).filter(id => id !== existingPersonId) };
+                            updatedPeople[existingPersonId] = { ...newSpouse, spouseId: personId, exSpouseIds: (newSpouse.exSpouseIds || []).filter(id => id !== personId) };
+                        } else {
+                            const newPersonId = `person_${Date.now()}`;
+                            const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined } as Person;
+                            updatedPeople[newPersonId] = { ...newPerson, spouseId: personId };
+                            
+                            let updatedAnchorPerson = { ...anchorPerson, spouseId: newPersonId };
+                            const oldSpouseId = anchorPerson.spouseId;
+                            if (oldSpouseId && updatedPeople[oldSpouseId]) {
+                                const oldSpouse = updatedPeople[oldSpouseId];
+                                updatedPeople[oldSpouseId] = { ...oldSpouse, spouseId: undefined, exSpouseIds: [...(oldSpouse.exSpouseIds || []), personId] };
+                                updatedAnchorPerson.exSpouseIds = [...(anchorPerson.exSpouseIds || []), oldSpouseId];
                             }
-                        });
-                        
-                        const parentToNavigateTo = anchorSibling.parentIds[0];
-                        postSubmitAction = () => {
-                            navigateTo(parentToNavigateTo);
-                        };
+                            updatedPeople[personId] = updatedAnchorPerson;
+                        }
+                        break;
                     }
-                    break;
+                    case 'child': {
+                        const newPersonId = `person_${Date.now()}`;
+                        const parentIdsForChild = [personId];
+                        if (anchorPerson.spouseId) {
+                            parentIdsForChild.push(anchorPerson.spouseId);
+                        }
+                        const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: parentIdsForChild, exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined } as Person;
+                        updatedPeople[newPersonId] = newPerson;
+                        
+                        updatedPeople[personId] = { ...anchorPerson, children: [...anchorPerson.children, newPersonId] };
+
+                        if (anchorPerson.spouseId) {
+                            const parent2 = updatedPeople[anchorPerson.spouseId];
+                            updatedPeople[anchorPerson.spouseId] = { ...parent2, children: [...parent2.children, newPersonId] };
+                        }
+                        break;
+                    }
+                    case 'parent': {
+                        const newPersonId = `person_${Date.now()}`;
+                        const newPerson: Person = { id: newPersonId, ...formData, children: [personId], parentIds: [], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined } as Person;
+                        
+                        const childPerson = updatedPeople[personId];
+                        const existingParentId = childPerson.parentIds[0] || null;
+                        
+                        updatedPeople[personId] = { ...childPerson, parentIds: [...childPerson.parentIds, newPersonId] };
+                        updatedPeople[newPersonId] = newPerson;
+
+                        if (existingParentId) {
+                            const existingParent = updatedPeople[existingParentId];
+                            updatedPeople[existingParentId] = { ...existingParent, spouseId: newPersonId };
+                            updatedPeople[newPersonId] = { ...newPerson, spouseId: existingParentId };
+                        }
+                        break;
+                    }
+                    case 'sibling': {
+                        const newPersonId = `person_${Date.now()}`;
+                        const anchorSibling = updatedPeople[personId];
+                        const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [...anchorSibling.parentIds], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined } as Person;
+                        updatedPeople[newPersonId] = newPerson;
+
+                        if (anchorSibling.parentIds.length > 0) {
+                            anchorSibling.parentIds.forEach(parentId => {
+                                const parent = updatedPeople[parentId];
+                                if (parent) {
+                                    updatedPeople[parentId] = { ...parent, children: [...parent.children, newPersonId] };
+                                }
+                            });
+                            
+                            const parentToNavigateTo = anchorSibling.parentIds[0];
+                            postSubmitAction = () => {
+                                navigateTo(parentToNavigateTo);
+                            };
+                        }
+                        break;
+                    }
                 }
             }
-        }
-        
-        setPeople(updatedPeople);
-        saveDataToLocalStorage(updatedPeople, rootIdStack);
+
+            return updatedPeople;
+        });
 
         if (postSubmitAction) {
+            // Use setTimeout to ensure the state update from setPeople is processed
+            // before navigating, which triggers a re-render with the new rootId.
+            // This fixes the issue where newly added siblings wouldn't appear immediately.
             setTimeout(postSubmitAction, 0);
         }
 
         handleCloseModal();
-    }, [modalState.context, handleCloseModal, navigateTo, people, rootIdStack, user]);
+    }, [modalState.context, handleCloseModal, navigateTo]);
   
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
@@ -789,14 +728,12 @@ function App() {
         const results = (Object.values(people) as Person[]).filter((person: Person) => {
             const fullName = `${person.firstName} ${person.lastName}`.toLowerCase();
             const bio = person.bio?.toLowerCase() ?? '';
-            const notes = person.notes?.toLowerCase() ?? '';
             const phone = person.contactInfo?.phone ?? '';
             const email = person.contactInfo?.email?.toLowerCase() ?? '';
             const address = person.contactInfo?.address?.toLowerCase() ?? '';
 
             return fullName.includes(lowerCaseQuery) ||
                    bio.includes(lowerCaseQuery) ||
-                   notes.includes(lowerCaseQuery) ||
                    phone.includes(query) || // Use original query for phone numbers, etc.
                    email.includes(lowerCaseQuery) ||
                    address.includes(lowerCaseQuery);
@@ -843,7 +780,6 @@ function App() {
       const { people: sharedPeople, rootIdStack: sharedRootIdStack } = JSON.parse(decryptedString);
       setPeople(sharedPeople);
       setRootIdStack(sharedRootIdStack);
-      saveDataToLocalStorage(sharedPeople, sharedRootIdStack);
       setIsPasswordPromptOpen(false);
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -870,7 +806,7 @@ function App() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        setIsSettingsOpen(false);
+        setIsMenuOpen(false);
     } catch (error) {
         console.error("Failed to export data:", error);
         alert("მონაცემების ექსპორტი ვერ მოხერხდა.");
@@ -905,7 +841,6 @@ function App() {
         mergedPerson.deathDate = importedPerson.deathDate || currentPerson.deathDate;
         mergedPerson.imageUrl = importedPerson.imageUrl || currentPerson.imageUrl;
         mergedPerson.bio = importedPerson.bio || currentPerson.bio;
-        mergedPerson.notes = importedPerson.notes || currentPerson.notes;
         
         mergedPerson.contactInfo = {
           phone: importedPerson.contactInfo?.phone || currentPerson.contactInfo?.phone,
@@ -956,12 +891,10 @@ function App() {
               if (fileAction === 'import') {
                 setPeople(importedData.people);
                 setRootIdStack(importedData.rootIdStack);
-                saveDataToLocalStorage(importedData.people, importedData.rootIdStack);
                 alert("მონაცემები წარმატებით იმპორტირდა.");
               } else if (fileAction === 'merge') {
                 const mergedPeople = mergePeopleData(people, importedData.people);
                 setPeople(mergedPeople);
-                saveDataToLocalStorage(mergedPeople, rootIdStack);
                 alert("მონაცემები წარმატებით შეერწყა.");
               }
           } catch (error: any) {
@@ -1042,13 +975,6 @@ function App() {
     handleCloseDetailsModal();
   };
   
-  const handleLogout = () => {
-    // Fix: Use netlifyIdentity directly as it's declared globally.
-    if (netlifyIdentity) {
-        netlifyIdentity.logout();
-    }
-  };
-  
   const formatTimestamp = (isoString: string | null): string => {
     if (!isoString) return 'უცნობია';
     try {
@@ -1067,6 +993,27 @@ function App() {
         return 'არასწორი თარიღი';
     }
   };
+
+  const handleStartCreating = () => {
+    const initialPeople: People = {
+      'root': {
+        id: 'root',
+        firstName: 'დამფუძნებელი',
+        lastName: 'გვარი',
+        gender: Gender.Male,
+        children: [],
+        parentIds: [],
+        exSpouseIds: [],
+        birthDate: '1950-01-01',
+        bio: 'ამ გენეალოგიური ხის საწყისი წერტილი.',
+        imageUrl: `https://avatar.iran.liara.run/public/boy?username=Founder`
+      },
+    };
+    setPeople(initialPeople);
+    setRootIdStack(['root']);
+  };
+  
+  const handleOpenImport = () => setIsImportModalOpen(true);
 
   const anchorPerson = modalState.context?.action === 'add' ? people[modalState.context.personId] : null;
   const anchorSpouse = anchorPerson?.spouseId ? people[anchorPerson.spouseId] : null;
@@ -1307,7 +1254,7 @@ const peopleWithBirthdays = useMemo(() => {
     });
 }, [people]);
 
-  if (isAuthLoading) {
+  if (isInitialLoad) {
     return (
       <div className="h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <p className="text-gray-800 dark:text-white text-xl">იტვირთება...</p>
@@ -1315,8 +1262,8 @@ const peopleWithBirthdays = useMemo(() => {
     );
   }
 
-  if (!user) {
-    return <AuthModal />;
+  if (!isViewingTree) {
+      return <LandingPage onEnter={() => setIsViewingTree(true)} />;
   }
 
   return (
@@ -1350,32 +1297,26 @@ const peopleWithBirthdays = useMemo(() => {
                     <button onClick={() => setIsGoogleSearchOpen(true)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" title="ისტორიული ძიება">
                         <GlobeIcon className="w-6 h-6"/>
                     </button>
-                    <div className="relative" ref={settingsRef}>
-                        <button onClick={() => setIsSettingsOpen(prev => !prev)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" title="პარამეტრები"><SettingsIcon className="w-6 h-6"/></button>
-                        {isSettingsOpen && (
+                    <div className="relative" ref={menuRef}>
+                        <button onClick={() => setIsMenuOpen(prev => !prev)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" title="მენიუ"><MenuIcon className="w-6 h-6"/></button>
+                        {isMenuOpen && (
                             <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg z-20">
-                                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate" title={user.email || ''}>
-                                        {user.email}
-                                    </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">ავტორიზებული</p>
-                                </div>
                                 <ul className="py-1 text-gray-700 dark:text-gray-300">
+                                    <li><button onClick={() => { setIsViewingTree(false); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><HomeIcon className="w-5 h-5"/><span>საწყისი გვერდი</span></button></li>
+                                    <li><hr className="my-1 border-gray-200 dark:border-gray-700" /></li>
                                     <li className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">მენიუ</li>
-                                    <li><button onClick={() => { setIsShareModalOpen(true); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><ShareIcon className="w-5 h-5"/><span>გაზიარება</span></button></li>
-                                    <li><button onClick={() => { setIsStatisticsModalOpen(true); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><StatsIcon className="w-5 h-5"/><span>სტატისტიკა</span></button></li>
-                                    <li><button onClick={() => { handleExportPdf(); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><ExportIcon className="w-5 h-5"/><span>PDF ექსპორტი</span></button></li>
+                                    <li><button onClick={() => { setIsShareModalOpen(true); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><ShareIcon className="w-5 h-5"/><span>გაზიარება</span></button></li>
+                                    <li><button onClick={() => { setIsStatisticsModalOpen(true); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><StatsIcon className="w-5 h-5"/><span>სტატისტიკა</span></button></li>
+                                    <li><button onClick={() => { handleExportPdf(); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><ExportIcon className="w-5 h-5"/><span>PDF ექსპორტი</span></button></li>
                                     <li><hr className="my-1 border-gray-200 dark:border-gray-700" /></li>
                                     <li className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">მონაცემები და რესურსები</li>
                                     <li><a href="https://forms.gle/rCJN5PG7mMzVGHsv7" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><DocumentTextIcon className="w-5 h-5"/><span>მონაცემების დამატება ფორმით</span></a></li>
-                                    <li><button onClick={() => { setIsImportModalOpen(true); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><JsonImportIcon className="w-5 h-5"/><span>მონაცემების იმპორტი</span></button></li>
-                                    <li><button onClick={() => { setIsExportModalOpen(true); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><JsonExportIcon className="w-5 h-5"/><span>მონაცემების ექსპორტი</span></button></li>
+                                    <li><button onClick={() => { setIsImportModalOpen(true); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><JsonImportIcon className="w-5 h-5"/><span>მონაცემების იმპორტი</span></button></li>
+                                    <li><button onClick={() => { setIsExportModalOpen(true); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"><JsonExportIcon className="w-5 h-5"/><span>მონაცემების ექსპორტი</span></button></li>
                                     <li><hr className="my-1 border-gray-200 dark:border-gray-700" /></li>
                                     <li className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">ინტერფეისი</li>
                                     <li><button onClick={() => setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'))} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"><span>თემის შეცვლა</span> {theme === 'dark' ? <SunIcon className="w-5 h-5 text-yellow-400"/> : <MoonIcon className="w-5 h-5 text-indigo-500"/>}</button></li>
                                     <li><button onClick={() => setViewMode(prev => prev === 'default' ? 'compact' : 'default')} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"><span>კომპაქტური რეჟიმი</span> {viewMode === 'compact' ? <ViewNormalIcon className="w-5 h-5"/> : <ViewCompactIcon className="w-5 h-5"/>}</button></li>
-                                     <li><hr className="my-1 border-gray-200 dark:border-gray-700" /></li>
-                                    <li><button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 flex items-center gap-3 transition-colors"><LogoutIcon className="w-5 h-5"/><span>გასვლა</span></button></li>
                                 </ul>
                                 <div className="px-4 py-2 text-xs text-center text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-700">
                                     ბოლოს განახლდა: {formatTimestamp(lastUpdated)}
@@ -1451,10 +1392,10 @@ const peopleWithBirthdays = useMemo(() => {
               </div>
             </div>
         ) : (
-             <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
-                <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-300">გენეალოგიური ხე ცარიელია</h2>
-                <p className="mt-2 text-gray-500 dark:text-gray-400">დასაწყებად, დაამატეთ პირველი პიროვნება ან მოახდინეთ მონაცემების იმპორტი პარამეტრებიდან.</p>
-             </div>
+             <InitialView 
+                onStartCreating={handleStartCreating}
+                onImport={handleOpenImport}
+            />
         )}
          {/* Zoom Controls */}
         <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-10">

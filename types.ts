@@ -21,7 +21,6 @@ export interface Person {
     address?: string;
   };
   bio?: string;
-  notes?: string;
 }
 
 export type People = Record<string, Person>;
