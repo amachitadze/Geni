@@ -1,5 +1,5 @@
 import React from 'react';
-import { Person, People } from '../types';
+import { Person, People, Gender } from '../types';
 
 interface TreeViewListProps {
   rootId: string;
@@ -23,7 +23,15 @@ const DefaultAvatar: React.FC<{ className?: string }> = ({ className }) => (
 
 const ListItem: React.FC<{ person: Person, onNavigate: (id: string) => void, isHighlighted: boolean, isSpouse?: boolean }> = ({ person, onNavigate, isHighlighted, isSpouse }) => {
     const hasChildren = person.children && person.children.length > 0;
-    const highlightClass = isHighlighted ? 'bg-purple-100 dark:bg-purple-900/50' : 'hover:bg-gray-100 dark:hover:bg-gray-700/50';
+    
+    const isDeceased = !!person.deathDate;
+    
+    const highlightClass = isHighlighted ? 'bg-purple-100 dark:bg-purple-900/50' : 'bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50';
+    const genderBorderClass = person.gender === Gender.Male 
+        ? 'border-l-blue-400 dark:border-l-blue-500' 
+        : 'border-l-pink-400 dark:border-l-pink-500';
+    const deceasedClass = isDeceased && !isHighlighted ? 'opacity-70 grayscale-[60%]' : '';
+
 
     const getYear = (dateString?: string) => {
         if (!dateString) return '';
@@ -39,7 +47,7 @@ const ListItem: React.FC<{ person: Person, onNavigate: (id: string) => void, isH
         <li className="list-none">
             <button
                 onClick={() => onNavigate(person.id)}
-                className={`w-full flex items-center gap-4 p-3 rounded-lg text-left transition-colors duration-200 ${highlightClass}`}
+                className={`w-full flex items-center gap-4 p-3 rounded-lg text-left transition-all duration-200 border-l-4 ${genderBorderClass} ${highlightClass} ${deceasedClass}`}
             >
                 {person.imageUrl ? (
                     <img src={person.imageUrl} alt={`${person.firstName} ${person.lastName}`} className="w-12 h-12 object-cover rounded-full flex-shrink-0" />
