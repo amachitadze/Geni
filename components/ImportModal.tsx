@@ -28,6 +28,12 @@ const DocumentPlusIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
+const CloudDownloadIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9.75v6.75m0 0l-3-3m3 3 3-3m-8.25 6a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+    </svg>
+);
+
 const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImportFromFile, onMergeFromFile }) => {
     const handleImportClick = () => {
         onImportFromFile();
@@ -66,6 +72,19 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImportFrom
                         <div className="flex-grow">
                             <span className="font-semibold text-gray-800 dark:text-gray-200">მონაცემების დამატება ფორმით</span>
                             <p className="text-xs text-gray-500 dark:text-gray-400">ხსნის Google Forms-ს, სადაც შეგიძლიათ შეავსოთ და გამოაგზავნოთ მონაცემები.</p>
+                        </div>
+                    </a>
+
+                    <a
+                        href="https://forms.gle/XpF826bYbhnySdTy7"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`${buttonBaseClasses} bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 ${buttonHoverClasses}`}
+                    >
+                        <CloudDownloadIcon className="w-8 h-8 text-purple-500 flex-shrink-0" />
+                        <div className="flex-grow">
+                            <span className="font-semibold text-gray-800 dark:text-gray-200">მონაცემების გადმოწერა დრაივიდან</span>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">მოითხოვეთ თქვენი მონაცემების ასლი .json ფორმატში.</p>
                         </div>
                     </a>
 
