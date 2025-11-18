@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { GoogleGenAI } from "@google/genai";
 import { Person, People, Gender, ModalState, Relationship } from './types';
 import TreeNode from './components/TreeNode';
+import TreeViewList from './components/TreeViewList';
 import AddPersonModal from './components/AddPersonModal';
 import DetailsModal from './components/DetailsModal';
 import StatisticsModal from './components/StatisticsModal';
@@ -92,6 +93,11 @@ const ViewCompactIcon: React.FC<{ className?: string }> = ({ className }) => (
 const ViewNormalIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
+    </svg>
+);
+const ListBulletIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
     </svg>
 );
 const GlobeIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -204,7 +210,7 @@ function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  const [viewMode, setViewMode] = useState<'default' | 'compact'>('default');
+  const [viewMode, setViewMode] = useState<'default' | 'compact' | 'list'>('default');
 
   const rootId = rootIdStack[rootIdStack.length - 1];
 
@@ -305,7 +311,7 @@ function App() {
   useEffect(() => {
     try {
       const savedData = localStorage.getItem('familyTree');
-      const savedViewMode = localStorage.getItem('familyTreeViewMode') as 'default' | 'compact' | null;
+      const savedViewMode = localStorage.getItem('familyTreeViewMode') as 'default' | 'compact' | 'list' | null;
       const savedLastUpdated = localStorage.getItem('familyTreeLastUpdated');
       
       setViewMode(savedViewMode || 'default');
@@ -1254,6 +1260,30 @@ const peopleWithBirthdays = useMemo(() => {
     });
 }, [people]);
 
+  const handleViewModeToggle = () => {
+    setViewMode(current => {
+        if (current === 'default') return 'compact';
+        if (current === 'compact') return 'list';
+        return 'default';
+    });
+    setIsMenuOpen(false);
+  };
+
+  const getViewModeButtonProps = () => {
+    switch (viewMode) {
+        case 'default':
+            return { text: 'კომპაქტური რეჟიმი', Icon: ViewCompactIcon };
+        case 'compact':
+            return { text: 'სიის რეჟიმი', Icon: ListBulletIcon };
+        case 'list':
+            return { text: 'სტანდარტული რეჟიმი', Icon: ViewNormalIcon };
+        default:
+            return { text: 'კომპაქტური რეჟიმი', Icon: ViewCompactIcon };
+    }
+  };
+  const { text: viewModeText, Icon: ViewModeIcon } = getViewModeButtonProps();
+
+
   if (isInitialLoad) {
     return (
       <div className="h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
@@ -1316,7 +1346,7 @@ const peopleWithBirthdays = useMemo(() => {
                                     <li><hr className="my-1 border-gray-200 dark:border-gray-700" /></li>
                                     <li className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">ინტერფეისი</li>
                                     <li><button onClick={() => setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'))} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"><span>თემის შეცვლა</span> {theme === 'dark' ? <SunIcon className="w-5 h-5 text-yellow-400"/> : <MoonIcon className="w-5 h-5 text-indigo-500"/>}</button></li>
-                                    <li><button onClick={() => setViewMode(prev => prev === 'default' ? 'compact' : 'default')} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"><span>კომპაქტური რეჟიმი</span> {viewMode === 'compact' ? <ViewNormalIcon className="w-5 h-5"/> : <ViewCompactIcon className="w-5 h-5"/>}</button></li>
+                                    <li><button onClick={handleViewModeToggle} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"><span>{viewModeText}</span> <ViewModeIcon className="w-5 h-5"/></button></li>
                                 </ul>
                                 <div className="px-4 py-2 text-xs text-center text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-700">
                                     ბოლოს განახლდა: {formatTimestamp(lastUpdated)}
@@ -1359,38 +1389,54 @@ const peopleWithBirthdays = useMemo(() => {
 
       <main 
         className="flex-grow flex flex-col relative overflow-hidden" 
-        ref={viewportRef} 
-        onWheel={handleWheel} 
-        onMouseDown={handleMouseDown} 
-        onMouseMove={handleMouseMove} 
-        onMouseUp={handleMouseUp} 
-        onMouseLeave={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onClick={() => setHighlightedPeople(null)} 
-        style={{cursor: isPanning ? 'grabbing' : 'grab', touchAction: 'none'}}
       >
         {Object.keys(people).length > 0 && people[rootId] ? (
-            <div className={`flex-grow flex items-center justify-center ${isZoomingViaWheel ? '' : 'transition-transform duration-200 ease-out'}`} style={{ transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})` }}>
-              <div className="p-16">
-                 <TreeNode 
-                    personId={rootId} 
-                    viewRootId={rootId}
-                    people={people} 
-                    onAdd={handleOpenAddModal}
-                    onEdit={handleOpenEditModal}
-                    onShowDetails={handleOpenDetailsModal}
-                    onNavigate={navigateTo}
+            viewMode === 'list' ? (
+                <TreeViewList
+                    rootId={rootId}
+                    people={people}
+                    onNavigate={(personId) => {
+                        navigateTo(personId);
+                        setHighlightedPersonId(personId);
+                    }}
                     highlightedPersonId={highlightedPersonId}
-                    highlightedPeople={highlightedPeople}
-                    onConnectionClick={handleConnectionClick}
-                    hoveredConnections={hoveredConnections}
-                    onSetHover={setHoveredPersonId}
-                    viewMode={viewMode}
-                 />
-              </div>
-            </div>
+                />
+            ) : (
+                <div 
+                    ref={viewportRef}
+                    className="flex-grow flex flex-col relative overflow-hidden"
+                    onWheel={handleWheel} 
+                    onMouseDown={handleMouseDown} 
+                    onMouseMove={handleMouseMove} 
+                    onMouseUp={handleMouseUp} 
+                    onMouseLeave={handleMouseUp}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onClick={() => setHighlightedPeople(null)} 
+                    style={{cursor: isPanning ? 'grabbing' : 'grab', touchAction: 'none'}}
+                >
+                    <div className={`flex-grow flex items-center justify-center ${isZoomingViaWheel ? '' : 'transition-transform duration-200 ease-out'}`} style={{ transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})` }}>
+                        <div className="p-16">
+                            <TreeNode 
+                                personId={rootId} 
+                                viewRootId={rootId}
+                                people={people} 
+                                onAdd={handleOpenAddModal}
+                                onEdit={handleOpenEditModal}
+                                onShowDetails={handleOpenDetailsModal}
+                                onNavigate={navigateTo}
+                                highlightedPersonId={highlightedPersonId}
+                                highlightedPeople={highlightedPeople}
+                                onConnectionClick={handleConnectionClick}
+                                hoveredConnections={hoveredConnections}
+                                onSetHover={setHoveredPersonId}
+                                viewMode={viewMode as 'default' | 'compact'}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )
         ) : (
              <InitialView 
                 onStartCreating={handleStartCreating}
@@ -1398,11 +1444,13 @@ const peopleWithBirthdays = useMemo(() => {
             />
         )}
          {/* Zoom Controls */}
-        <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-10">
-            <button onClick={() => handleZoom('in')} className="w-10 h-10 rounded-full bg-gray-700/50 text-white backdrop-blur-sm flex items-center justify-center text-xl hover:bg-gray-600/70">+</button>
-            <button onClick={() => handleZoom('out')} className="w-10 h-10 rounded-full bg-gray-700/50 text-white backdrop-blur-sm flex items-center justify-center text-xl hover:bg-gray-600/70">-</button>
-            <button onClick={resetTransform} className="w-10 h-10 rounded-full bg-gray-700/50 text-white backdrop-blur-sm flex items-center justify-center hover:bg-gray-600/70" title="ხედის განულება"><CenterIcon className="w-5 h-5"/></button>
-        </div>
+        {viewMode !== 'list' && (
+            <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-10">
+                <button onClick={() => handleZoom('in')} className="w-10 h-10 rounded-full bg-gray-700/50 text-white backdrop-blur-sm flex items-center justify-center text-xl hover:bg-gray-600/70">+</button>
+                <button onClick={() => handleZoom('out')} className="w-10 h-10 rounded-full bg-gray-700/50 text-white backdrop-blur-sm flex items-center justify-center text-xl hover:bg-gray-600/70">-</button>
+                <button onClick={resetTransform} className="w-10 h-10 rounded-full bg-gray-700/50 text-white backdrop-blur-sm flex items-center justify-center hover:bg-gray-600/70" title="ხედის განულება"><CenterIcon className="w-5 h-5"/></button>
+            </div>
+        )}
         <BirthdayNotifier 
             peopleWithBirthdays={peopleWithBirthdays}
             onNavigate={(personId) => {

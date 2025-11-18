@@ -10,6 +10,7 @@ const urlsToCache = [
   '/components/LandingPage.tsx',
   '/components/InitialView.tsx',
   '/components/TreeNode.tsx',
+  '/components/TreeViewList.tsx',
   '/components/PersonCard.tsx',
   '/components/AddPersonModal.tsx',
   '/components/DetailsModal.tsx',
