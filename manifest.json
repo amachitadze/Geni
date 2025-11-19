@@ -3,17 +3,20 @@
   "name": "გენი",
   "icons": [
     {
-      "src": "https://i.postimg.cc/fyGRn3Dd/geni.png",
+      "src": "https://i.postimg.cc/XY7Tts2q/Geni-icon.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://i.postimg.cc/fyGRn3Dd/geni.png",
+      "src": "https://i.postimg.cc/XY7Tts2q/Geni-icon.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "#111827",
   "background_color": "#111827"
