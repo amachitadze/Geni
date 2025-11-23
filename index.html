@@ -6,6 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>გენეალოგიური ხე</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              gray: {
+                900: '#111827',
+                800: '#1f2937',
+                700: '#374151',
+              }
+            }
+          }
+        }
+      }
+    </script>
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#ffffff" />
     <script>
@@ -20,6 +36,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+      /* Smooth background transition */
+      body {
+        transition: background-color 0.3s ease;
+      }
+      
       /* Base rule to hide buttons during export */
       body.pdf-exporting .person-card-buttons {
         visibility: hidden;

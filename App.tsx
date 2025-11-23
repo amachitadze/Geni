@@ -210,7 +210,12 @@ function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  const [viewMode, setViewMode] = useState<'default' | 'compact' | 'list'>('default');
+  const [viewMode, setViewMode] = useState<'default' | 'compact' | 'list'>(() => {
+    const savedViewMode = localStorage.getItem('familyTreeViewMode') as 'default' | 'compact' | 'list' | null;
+    if (savedViewMode) return savedViewMode;
+    // Default to 'list' for mobile devices (screen width < 768px), otherwise 'default'
+    return window.innerWidth < 768 ? 'list' : 'default';
+  });
 
   const rootId = rootIdStack[rootIdStack.length - 1];
 
@@ -311,10 +316,9 @@ function App() {
   useEffect(() => {
     try {
       const savedData = localStorage.getItem('familyTree');
-      const savedViewMode = localStorage.getItem('familyTreeViewMode') as 'default' | 'compact' | 'list' | null;
+      // viewMode is already initialized in useState
       const savedLastUpdated = localStorage.getItem('familyTreeLastUpdated');
       
-      setViewMode(savedViewMode || 'default');
       setLastUpdated(savedLastUpdated);
 
       if (savedData) {
@@ -1260,28 +1264,10 @@ const peopleWithBirthdays = useMemo(() => {
     });
 }, [people]);
 
-  const handleViewModeToggle = () => {
-    setViewMode(current => {
-        if (current === 'default') return 'compact';
-        if (current === 'compact') return 'list';
-        return 'default';
-    });
+  const handleViewModeChange = (mode: 'default' | 'compact' | 'list') => {
+    setViewMode(mode);
     setIsMenuOpen(false);
   };
-
-  const getViewModeButtonProps = () => {
-    switch (viewMode) {
-        case 'default':
-            return { text: 'კომპაქტური რეჟიმი', Icon: ViewCompactIcon };
-        case 'compact':
-            return { text: 'სიის რეჟიმი', Icon: ListBulletIcon };
-        case 'list':
-            return { text: 'სტანდარტული რეჟიმი', Icon: ViewNormalIcon };
-        default:
-            return { text: 'კომპაქტური რეჟიმი', Icon: ViewCompactIcon };
-    }
-  };
-  const { text: viewModeText, Icon: ViewModeIcon } = getViewModeButtonProps();
 
 
   if (isInitialLoad) {
@@ -1346,7 +1332,24 @@ const peopleWithBirthdays = useMemo(() => {
                                     <li><hr className="my-1 border-gray-200 dark:border-gray-700" /></li>
                                     <li className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">ინტერფეისი</li>
                                     <li><button onClick={() => setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'))} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"><span>თემის შეცვლა</span> {theme === 'dark' ? <SunIcon className="w-5 h-5 text-yellow-400"/> : <MoonIcon className="w-5 h-5 text-indigo-500"/>}</button></li>
-                                    <li><button onClick={handleViewModeToggle} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"><span>{viewModeText}</span> <ViewModeIcon className="w-5 h-5"/></button></li>
+                                    
+                                    <li><hr className="my-1 border-gray-200 dark:border-gray-700" /></li>
+                                    <li className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">ხედის რეჟიმი</li>
+                                    <li>
+                                        <button onClick={() => handleViewModeChange('default')} className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors ${viewMode === 'default' ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' : ''}`}>
+                                            <ViewNormalIcon className="w-5 h-5"/><span>სტანდარტული</span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button onClick={() => handleViewModeChange('compact')} className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors ${viewMode === 'compact' ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' : ''}`}>
+                                            <ViewCompactIcon className="w-5 h-5"/><span>კომპაქტური</span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button onClick={() => handleViewModeChange('list')} className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors ${viewMode === 'list' ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' : ''}`}>
+                                            <ListBulletIcon className="w-5 h-5"/><span>სია (მობილურისთვის)</span>
+                                        </button>
+                                    </li>
                                 </ul>
                                 <div className="px-4 py-2 text-xs text-center text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-700">
                                     ბოლოს განახლდა: {formatTimestamp(lastUpdated)}
