@@ -14,11 +14,12 @@ import ImportModal from './components/ImportModal';
 import ExportModal from './components/ExportModal';
 import LandingPage from './components/LandingPage';
 import InitialView from './components/InitialView';
-import { decryptData } from './utils/crypto';
+import { decryptData, base64ToBuffer } from './utils/crypto';
 
 // Allow TypeScript to recognize the libraries loaded from CDN
 declare const html2canvas: any;
 declare const jspdf: any;
+declare const pako: any;
 
 const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24" stroke="currentColor" strokeWidth={2}>
@@ -795,8 +796,10 @@ function App() {
     setIsDecrypting(true);
     setDecryptionError(null);
     try {
-      const decryptedString = await decryptData(encryptedData, password);
-      const { people: sharedPeople, rootIdStack: sharedRootIdStack } = JSON.parse(decryptedString);
+      const decryptedCompressedBase64 = await decryptData(encryptedData, password);
+      const compressedBuffer = base64ToBuffer(decryptedCompressedBase64);
+      const decompressedString = pako.inflate(compressedBuffer, { to: 'string' });
+      const { people: sharedPeople, rootIdStack: sharedRootIdStack } = JSON.parse(decompressedString);
       setPeople(sharedPeople);
       setRootIdStack(sharedRootIdStack);
       setIsPasswordPromptOpen(false);

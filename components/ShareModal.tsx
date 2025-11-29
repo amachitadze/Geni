@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { encryptData } from '../utils/crypto';
+import { encryptData, bufferToBase64 } from '../utils/crypto';
 import { People } from '../types';
+
+declare const pako: any;
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -48,13 +50,19 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     setError('');
     try {
       const jsonString = JSON.stringify(data);
-      const encryptedData = await encryptData(jsonString, password);
+      // 1. Compress the data
+      const compressed = pako.deflate(jsonString);
+      // 2. Convert compressed binary data to Base64 to safely encrypt it as a string
+      const compressedBase64 = bufferToBase64(compressed.buffer);
+      // 3. Encrypt the compressed data
+      const encryptedData = await encryptData(compressedBase64, password);
+      
       const encodedData = encodeURIComponent(encryptedData);
       const url = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
       setShareUrl(url);
     } catch (e) {
-      console.error("Encryption failed", e);
-      setError('ბმულის გენერაცია ვერ მოხერხდა.');
+      console.error("Encryption/Compression failed", e);
+      setError('ბმულის გენერაცია ვერ მოხერხდა. შესაძლოა, ხე ძალიან დიდია.');
     } finally {
       setIsLoading(false);
     }

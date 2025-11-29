@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Person, People } from '../types';
 
 interface DetailsModalProps {
@@ -40,9 +40,14 @@ const AddressIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 const GlobeIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03-4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
     </svg>
 );
+const EllipsisVerticalIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+    </svg>
+  );
 
 const formatDate = (dateStr: string | undefined): string => {
     if (!dateStr) return 'უცნობია';
@@ -57,6 +62,19 @@ const formatDate = (dateStr: string | undefined): string => {
 
 
 const DetailsModal: React.FC<DetailsModalProps> = ({ person, people, onClose, onEdit, onDelete, onNavigate, onGoogleSearch, onShowOnMap }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+            setIsMenuOpen(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   if (!person) return null;
 
   const calculateAge = (birthDate?: string, deathDate?: string): number | null => {
@@ -92,6 +110,38 @@ const DetailsModal: React.FC<DetailsModalProps> = ({ person, people, onClose, on
   const exSpouses = person.exSpouseIds?.map(id => people[id]).filter(Boolean) || [];
   const age = calculateAge(person.birthDate, person.deathDate);
 
+  const ActionButtons = ({ isMenu }: { isMenu?: boolean }) => (
+    <>
+      <button
+        onClick={() => onGoogleSearch(person)}
+        className={isMenu ? "w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3" : "p-2 rounded-full text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-black dark:hover:text-white transition-colors"}
+        title="ინფორმაციის მოძიება Google-ში"
+        aria-label={`${fullName}-ს შესახებ ინფორმაციის მოძიება`}
+      >
+        <GlobeIcon className="h-5 w-5" />
+        {isMenu && <span>ძიება Google-ში</span>}
+      </button>
+      <button
+        onClick={() => onEdit(person.id)}
+        className={isMenu ? "w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3" : "p-2 rounded-full text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-black dark:hover:text-white transition-colors"}
+        aria-label={`${fullName}-ს რედაქტირება`}
+      >
+        <EditIcon className="h-5 w-5" />
+         {isMenu && <span>რედაქტირება</span>}
+      </button>
+      {person.id !== 'root' && (
+         <button
+            onClick={() => onDelete(person.id)}
+            className={isMenu ? "w-full text-left px-4 py-2 text-sm hover:bg-red-100 dark:hover:bg-red-900/50 flex items-center gap-3 text-red-600 dark:text-red-400" : "p-2 rounded-full text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-red-500 dark:hover:bg-red-600 hover:text-white transition-colors"}
+            aria-label={`${fullName}-ს წაშლა`}
+          >
+            <DeleteIcon className="h-5 w-5" />
+            {isMenu && <span>წაშლა</span>}
+          </button>
+      )}
+    </>
+  );
+
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 transition-opacity p-4"
@@ -104,38 +154,35 @@ const DetailsModal: React.FC<DetailsModalProps> = ({ person, people, onClose, on
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg border border-gray-300 dark:border-gray-700 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <header className="flex items-start justify-between mb-4">
-          <div>
-            <h2 id="details-modal-title" className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600">
+        <header className="flex items-start justify-between mb-4 gap-4">
+          <div className="flex-1 min-w-0">
+            <h2 id="details-modal-title" className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600 break-words">
               {fullName}
             </h2>
             <p className={`capitalize font-semibold ${genderColor}`}>{person.gender === 'male' ? 'მამრობითი' : 'მდედრობითი'}</p>
           </div>
-           <div className="flex items-center gap-2">
-            <button
-              onClick={() => onGoogleSearch(person)}
-              className="p-2 rounded-full text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-black dark:hover:text-white transition-colors"
-              title="ინფორმაციის მოძიება Google-ში"
-              aria-label={`${fullName}-ს შესახებ ინფორმაციის მოძიება`}
-            >
-              <GlobeIcon className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => onEdit(person.id)}
-              className="p-2 rounded-full text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-black dark:hover:text-white transition-colors"
-              aria-label={`${fullName}-ს რედაქტირება`}
-            >
-              <EditIcon className="h-5 w-5" />
-            </button>
-            {person.id !== 'root' && (
-               <button
-                  onClick={() => onDelete(person.id)}
-                  className="p-2 rounded-full text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-red-500 dark:hover:bg-red-600 hover:text-white transition-colors"
-                  aria-label={`${fullName}-ს წაშლა`}
+           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Desktop Buttons */}
+            <div className="hidden sm:flex items-center gap-2">
+              <ActionButtons />
+            </div>
+
+            {/* Mobile Menu */}
+            <div className="sm:hidden relative" ref={menuRef}>
+                <button
+                    onClick={() => setIsMenuOpen(prev => !prev)}
+                    className="p-2 rounded-full text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    aria-label="More actions"
                 >
-                  <DeleteIcon className="h-5 w-5" />
+                    <EllipsisVerticalIcon className="h-5 w-5" />
                 </button>
-            )}
+                {isMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg z-20 py-1">
+                      <ActionButtons isMenu />
+                    </div>
+                )}
+            </div>
+
             <button
               onClick={onClose}
               className="p-2 rounded-full text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-black dark:hover:text-white transition-colors"

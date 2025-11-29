@@ -1,10 +1,10 @@
 // Helper to convert ArrayBuffer to Base64
-function bufferToBase64(buffer: ArrayBuffer): string {
+export function bufferToBase64(buffer: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
 
 // Helper to convert Base64 to ArrayBuffer
-function base64ToBuffer(base64: string): ArrayBuffer {
+export function base64ToBuffer(base64: string): ArrayBuffer {
   const binaryString = atob(base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
