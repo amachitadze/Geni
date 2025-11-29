@@ -184,6 +184,27 @@ const DetailsModal: React.FC<DetailsModalProps> = ({ person, people, onClose, on
               <p className="whitespace-pre-wrap">{person.bio}</p>
             </div>
           )}
+
+          {person.deathDate && person.cemeteryAddress && (
+            <div>
+              <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-100 border-b border-gray-300 dark:border-gray-700 pb-1 mb-2">სასაფლაოს მისამართი</h3>
+              <div className="flex items-start gap-3 mt-2">
+                <AddressIcon className="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0 mt-1" />
+                {person.cemeteryAddress.startsWith('http') ? (
+                  <a 
+                    href={person.cemeteryAddress} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-purple-600 dark:text-purple-400 hover:underline"
+                  >
+                    {person.cemeteryAddress}
+                  </a>
+                ) : (
+                  <p>{person.cemeteryAddress}</p>
+                )}
+              </div>
+            </div>
+          )}
           
           {exSpouses.length > 0 && (
             <div>

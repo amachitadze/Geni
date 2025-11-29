@@ -12,6 +12,7 @@ interface AddPersonModalProps {
       imageUrl: string; 
       contactInfo: { phone: string; email: string; address: string; }; 
       bio: string;
+      cemeteryAddress: string;
     }>,
     relationship?: Relationship,
     existingPersonId?: string,
@@ -66,6 +67,7 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [bio, setBio] = useState('');
+  const [cemeteryAddress, setCemeteryAddress] = useState('');
   
   // Modal state
   const [relationship, setRelationship] = useState<Relationship>('child');
@@ -91,6 +93,7 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
       setEmail('');
       setAddress('');
       setBio('');
+      setCemeteryAddress('');
       setRelationship('child');
       setSpouseMode('new');
       setSelectedExSpouseId('');
@@ -109,6 +112,7 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
       setEmail(personToEdit.contactInfo?.email || '');
       setAddress(personToEdit.contactInfo?.address || '');
       setBio(personToEdit.bio || '');
+      setCemeteryAddress(personToEdit.cemeteryAddress || '');
     } else if (context?.action === 'add') {
       setTitle('ნათესავის დამატება');
       setSubmitText('დამატება');
@@ -215,6 +219,7 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
         imageUrl,
         contactInfo: { phone, email, address },
         bio,
+        cemeteryAddress,
     };
 
     if (isEditMode) {
@@ -344,6 +349,13 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
                         <input type="text" id="deathDate" value={deathDate} onChange={(e) => setDeathDate(e.target.value)} onBlur={(e) => handleDateBlur(e, setDeathDate)} className={inputStyles} placeholder="DD.MM.YYYY ან YYYY"/>
                     </div>
                 </div>
+
+                {convertDisplayToStorage(deathDate) && (
+                  <div>
+                    <label htmlFor="cemeteryAddress" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">სასაფლაოს მისამართი</label>
+                    <input type="text" id="cemeteryAddress" value={cemeteryAddress} onChange={(e) => setCemeteryAddress(e.target.value)} className={inputStyles} placeholder="მისამართი ან Google Maps-ის ბმული"/>
+                  </div>
+                )}
                 
                 <div className="space-y-4 rounded-md border border-gray-300 dark:border-gray-700 p-3">
                     <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">საკონტაქტო ინფორმაცია</h3>

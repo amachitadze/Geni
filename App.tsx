@@ -601,7 +601,7 @@ function App() {
 
     const handleFormSubmit = useCallback((
         formData: Partial<{ firstName: string; lastName: string; gender: Gender; }>,
-        details: Partial<{ birthDate: string; deathDate: string; imageUrl: string; contactInfo: { phone: string; email: string; address: string; }; bio: string; }>,
+        details: Partial<{ birthDate: string; deathDate: string; imageUrl: string; contactInfo: { phone: string; email: string; address: string; }; bio: string; cemeteryAddress: string; }>,
         relationship?: Relationship,
         existingPersonId?: string
     ) => {
@@ -629,9 +629,18 @@ function App() {
                     imageUrl: details.imageUrl || undefined,
                     contactInfo: contactInfoToSave,
                     bio: details.bio || undefined,
+                    cemeteryAddress: details.cemeteryAddress || undefined,
                 };
             } else if (action === 'add' && relationship) {
                 const anchorPerson = updatedPeople[personId];
+                const newPersonDetails = {
+                    birthDate: details.birthDate || undefined,
+                    deathDate: details.deathDate || undefined,
+                    imageUrl: details.imageUrl || undefined,
+                    contactInfo: contactInfoToSave,
+                    bio: details.bio || undefined,
+                    cemeteryAddress: details.cemeteryAddress || undefined,
+                };
 
                 switch (relationship) {
                     case 'spouse': {
@@ -641,7 +650,7 @@ function App() {
                             updatedPeople[existingPersonId] = { ...newSpouse, spouseId: personId, exSpouseIds: (newSpouse.exSpouseIds || []).filter(id => id !== personId) };
                         } else {
                             const newPersonId = `person_${Date.now()}`;
-                            const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined } as Person;
+                            const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [], exSpouseIds: [], ...newPersonDetails } as Person;
                             updatedPeople[newPersonId] = { ...newPerson, spouseId: personId };
                             
                             let updatedAnchorPerson = { ...anchorPerson, spouseId: newPersonId };
@@ -661,7 +670,7 @@ function App() {
                         if (anchorPerson.spouseId) {
                             parentIdsForChild.push(anchorPerson.spouseId);
                         }
-                        const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: parentIdsForChild, exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined } as Person;
+                        const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: parentIdsForChild, exSpouseIds: [], ...newPersonDetails } as Person;
                         updatedPeople[newPersonId] = newPerson;
                         
                         updatedPeople[personId] = { ...anchorPerson, children: [...anchorPerson.children, newPersonId] };
@@ -674,7 +683,7 @@ function App() {
                     }
                     case 'parent': {
                         const newPersonId = `person_${Date.now()}`;
-                        const newPerson: Person = { id: newPersonId, ...formData, children: [personId], parentIds: [], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined } as Person;
+                        const newPerson: Person = { id: newPersonId, ...formData, children: [personId], parentIds: [], exSpouseIds: [], ...newPersonDetails } as Person;
                         
                         const childPerson = updatedPeople[personId];
                         const existingParentId = childPerson.parentIds[0] || null;
@@ -692,7 +701,7 @@ function App() {
                     case 'sibling': {
                         const newPersonId = `person_${Date.now()}`;
                         const anchorSibling = updatedPeople[personId];
-                        const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [...anchorSibling.parentIds], exSpouseIds: [], birthDate: details.birthDate || undefined, deathDate: details.deathDate || undefined, imageUrl: details.imageUrl || undefined, contactInfo: contactInfoToSave, bio: details.bio || undefined } as Person;
+                        const newPerson: Person = { id: newPersonId, ...formData, children: [], parentIds: [...anchorSibling.parentIds], exSpouseIds: [], ...newPersonDetails } as Person;
                         updatedPeople[newPersonId] = newPerson;
 
                         if (anchorSibling.parentIds.length > 0) {
