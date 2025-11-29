@@ -5,6 +5,7 @@ interface TreeViewListProps {
   rootId: string;
   people: People;
   onNavigate: (personId: string) => void;
+  onShowDetails: (personId: string) => void;
   highlightedPersonId: string | null;
 }
 
@@ -21,17 +22,26 @@ const DefaultAvatar: React.FC<{ className?: string }> = ({ className }) => (
     </div>
 );
 
-const ListItem: React.FC<{ person: Person, onNavigate: (id: string) => void, isHighlighted: boolean, isSpouse?: boolean }> = ({ person, onNavigate, isHighlighted, isSpouse }) => {
+const ListItem: React.FC<{ 
+    person: Person, 
+    onNavigate: (id: string) => void, 
+    onShowDetails: (id: string) => void,
+    isHighlighted: boolean, 
+    isSpouse?: boolean 
+}> = ({ person, onNavigate, onShowDetails, isHighlighted, isSpouse }) => {
     const hasChildren = person.children && person.children.length > 0;
     
     const isDeceased = !!person.deathDate;
     
-    const highlightClass = isHighlighted ? 'bg-purple-100 dark:bg-purple-900/50' : 'bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50';
+    const highlightClass = isHighlighted 
+        ? 'bg-purple-100 dark:bg-purple-900/50' 
+        : 'bg-gray-50 dark:bg-gray-800/50';
+    
     const genderBorderClass = person.gender === Gender.Male 
         ? 'border-l-blue-400 dark:border-l-blue-500' 
         : 'border-l-pink-400 dark:border-l-pink-500';
+    
     const deceasedClass = isDeceased && !isHighlighted ? 'opacity-70 grayscale-[60%]' : '';
-
 
     const getYear = (dateString?: string) => {
         if (!dateString) return '';
@@ -43,28 +53,49 @@ const ListItem: React.FC<{ person: Person, onNavigate: (id: string) => void, isH
     const deathYear = getYear(person.deathDate);
     const lifeRange = (birthYear || deathYear) ? `(${birthYear || '?'} - ${deathYear || ''})` : '';
 
+    const handleNavigateClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onNavigate(person.id);
+    };
+
     return (
         <li className="list-none">
-            <button
-                onClick={() => onNavigate(person.id)}
-                className={`w-full flex items-center gap-4 p-3 rounded-lg text-left transition-all duration-200 border-l-4 ${genderBorderClass} ${highlightClass} ${deceasedClass}`}
-            >
-                {person.imageUrl ? (
-                    <img src={person.imageUrl} alt={`${person.firstName} ${person.lastName}`} className="w-12 h-12 object-cover rounded-full flex-shrink-0" />
-                ) : (
-                    <DefaultAvatar className="w-12 h-12 flex-shrink-0"/>
-                )}
-                <div className="flex-grow w-0">
-                    <p className="font-semibold text-gray-800 dark:text-gray-100 truncate">
-                        {person.firstName} {person.lastName}
-                        {isSpouse && <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">(მეუღლე)</span>}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{lifeRange}</p>
+            <div className={`w-full flex items-stretch rounded-lg text-left transition-all duration-200 border-l-4 overflow-hidden ${genderBorderClass} ${highlightClass} ${deceasedClass}`}>
+                {/* Details Area */}
+                <div
+                    onClick={() => onShowDetails(person.id)}
+                    className="flex-grow flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-colors"
+                    role="button"
+                    aria-label={`View details for ${person.firstName} ${person.lastName}`}
+                >
+                    {person.imageUrl ? (
+                        <img src={person.imageUrl} alt={`${person.firstName} ${person.lastName}`} className="w-12 h-12 object-cover rounded-full flex-shrink-0" />
+                    ) : (
+                        <DefaultAvatar className="w-12 h-12 flex-shrink-0"/>
+                    )}
+                    <div className="flex-grow w-0">
+                        <p className="font-semibold text-gray-800 dark:text-gray-100 truncate">
+                            {person.firstName} {person.lastName}
+                            {isSpouse && <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">(მეუღლე)</span>}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{lifeRange}</p>
+                    </div>
                 </div>
+
+                {/* Navigation Area */}
                 {hasChildren && (
-                    <ChevronRightIcon className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                    <button 
+                        onClick={handleNavigateClick} 
+                        className="group flex-shrink-0 flex items-center justify-center px-4 relative hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+                        aria-label={`Navigate to ${person.firstName} ${person.lastName}'s family`}
+                    >
+                        {/* Vertical Separator */}
+                        <div className="absolute left-0 top-1/4 bottom-1/4 w-px bg-gray-200 dark:bg-gray-700/50 transition-colors group-hover:bg-gray-300 dark:group-hover:bg-gray-600"></div>
+                        
+                        <ChevronRightIcon className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-all duration-200 group-hover:translate-x-0.5" />
+                    </button>
                 )}
-            </button>
+            </div>
         </li>
     );
 };
@@ -80,7 +111,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
     </div>
 );
 
-const TreeViewList: React.FC<TreeViewListProps> = ({ rootId, people, onNavigate, highlightedPersonId }) => {
+const TreeViewList: React.FC<TreeViewListProps> = ({ rootId, people, onNavigate, onShowDetails, highlightedPersonId }) => {
   const rootPerson = people[rootId];
 
   if (!rootPerson) {
@@ -100,6 +131,7 @@ const TreeViewList: React.FC<TreeViewListProps> = ({ rootId, people, onNavigate,
                         key={p.id} 
                         person={p} 
                         onNavigate={onNavigate} 
+                        onShowDetails={onShowDetails}
                         isHighlighted={p.id === highlightedPersonId} 
                     />
                 ))}
@@ -110,6 +142,7 @@ const TreeViewList: React.FC<TreeViewListProps> = ({ rootId, people, onNavigate,
             <ListItem 
                 person={rootPerson} 
                 onNavigate={onNavigate} 
+                onShowDetails={onShowDetails}
                 isHighlighted={rootPerson.id === highlightedPersonId}
             />
             {spouse && (
@@ -117,6 +150,7 @@ const TreeViewList: React.FC<TreeViewListProps> = ({ rootId, people, onNavigate,
                     key={spouse.id} 
                     person={spouse} 
                     onNavigate={onNavigate} 
+                    onShowDetails={onShowDetails}
                     isHighlighted={spouse.id === highlightedPersonId}
                     isSpouse
                 />
@@ -130,6 +164,7 @@ const TreeViewList: React.FC<TreeViewListProps> = ({ rootId, people, onNavigate,
                         key={c.id} 
                         person={c} 
                         onNavigate={onNavigate} 
+                        onShowDetails={onShowDetails}
                         isHighlighted={c.id === highlightedPersonId}
                     />
                 ))}
