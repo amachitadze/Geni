@@ -796,8 +796,8 @@ function App() {
     setIsDecrypting(true);
     setDecryptionError(null);
     try {
-      // 1. Fetch the data from the new service
-      const response = await fetch(`https://api.jsonstorage.net/v1/json/${blobId}`);
+      // 1. Fetch the data from the npoint.io service
+      const response = await fetch(`https://api.npoint.io/${blobId}`);
       if (!response.ok) {
         throw new Error('მონაცემების ჩამოტვირთვა ვერ მოხერხდა.');
       }

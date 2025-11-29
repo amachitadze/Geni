@@ -56,13 +56,13 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
       const compressedBase64 = bufferToBase64(compressed.buffer);
       const encryptedData = await encryptData(compressedBase64, password);
 
-      // Upload encrypted data to jsonstorage.net
-      const response = await fetch('https://api.jsonstorage.net/v1/json', {
+      // Upload encrypted data to npoint.io
+      const response = await fetch('https://api.npoint.io/bins', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ encryptedData }), // Wrap in an object to store as valid JSON
+        body: JSON.stringify({ encryptedData }),
       });
 
       if (!response.ok) {
@@ -70,14 +70,11 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
       }
 
       const result = await response.json();
-      if (!result.uri) {
+      if (!result.id) {
         throw new Error('ვერ მოხერხდა უნიკალური ID-ის მიღება.');
       }
       
-      const blobId = result.uri.split('/').pop();
-      if (!blobId) {
-          throw new Error('ბმულის ID-ის დამუშავება ვერ მოხერხდა.');
-      }
+      const blobId = result.id;
 
       const url = `${window.location.origin}${window.location.pathname}?blobId=${blobId}`;
       setShareUrl(url);
