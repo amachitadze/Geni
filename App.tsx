@@ -254,7 +254,7 @@ function App() {
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isPasswordPromptOpen, setIsPasswordPromptOpen] = useState(false);
-  const [encryptedData, setEncryptedData] = useState<string | null>(null);
+  const [blobId, setBlobId] = useState<string | null>(null);
   const [decryptionError, setDecryptionError] = useState<string | null>(null);
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -305,9 +305,9 @@ function App() {
   // Check for shared data in URL on initial mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const data = urlParams.get('data');
-    if (data) {
-      setEncryptedData(decodeURIComponent(data));
+    const id = urlParams.get('blobId');
+    if (id) {
+      setBlobId(id);
       setIsPasswordPromptOpen(true);
       setIsViewingTree(true);
     }
@@ -792,11 +792,23 @@ function App() {
   };
 
   const handlePasswordSubmit = async (password: string) => {
-    if (!encryptedData) return;
+    if (!blobId) return;
     setIsDecrypting(true);
     setDecryptionError(null);
     try {
-      const decryptedCompressedBase64 = await decryptData(encryptedData, password);
+      // 1. Fetch the data from the new service
+      const response = await fetch(`https://api.jsonstorage.net/v1/json/${blobId}`);
+      if (!response.ok) {
+        throw new Error('მონაცემების ჩამოტვირთვა ვერ მოხერხდა.');
+      }
+      const blobContent = await response.json();
+      const fetchedEncryptedData = blobContent.encryptedData;
+      if (!fetchedEncryptedData) {
+          throw new Error('მიღებული მონაცემები ცარიელია.');
+      }
+
+      // 2. Decrypt and decompress
+      const decryptedCompressedBase64 = await decryptData(fetchedEncryptedData, password);
       const compressedBuffer = base64ToBuffer(decryptedCompressedBase64);
       const decompressedString = pako.inflate(compressedBuffer, { to: 'string' });
       const { people: sharedPeople, rootIdStack: sharedRootIdStack } = JSON.parse(decompressedString);
@@ -806,8 +818,8 @@ function App() {
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } catch (error: any) {
-      console.error("Decryption failed", error);
-      setDecryptionError("პაროლი არასწორია ან მონაცემები დაზიანებულია.");
+      console.error("Decryption/Fetch failed", error);
+      setDecryptionError("პაროლი არასწორია ან მონაცემები დაზიანებულია/ვადაგასულია.");
     } finally {
       setIsDecrypting(false);
     }

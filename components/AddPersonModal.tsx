@@ -117,7 +117,7 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
 
     if (isEditMode && personToEdit) {
       setTitle('პიროვნების რედაქტირება');
-      setSubmitText('ცვლილებების შენახვა');
+      setSubmitText('შენახვა');
       setFirstName(personToEdit.firstName);
       setLastName(personToEdit.lastName);
       setGender(personToEdit.gender);
