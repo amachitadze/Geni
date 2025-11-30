@@ -796,9 +796,14 @@ function App() {
     setIsDecrypting(true);
     setDecryptionError(null);
     try {
-      const apiKey = process.env.JSONBIN_API_KEY || process.env.REACT_APP_JSONBIN_API_KEY || process.env.VITE_JSONBIN_API_KEY;
+      // Prioritize environment variables, but use hardcoded fallback as a last resort per user request to bypass Vercel env issues
+      const apiKey = process.env.JSONBIN_API_KEY || 
+                     process.env.REACT_APP_JSONBIN_API_KEY || 
+                     process.env.VITE_JSONBIN_API_KEY || 
+                     '$2a$10$venH21uTMXyIkjQ9J3XBJO6MOxkWzuWWI9J5wV8uDAg/ZWlc.KCNK';
+                     
       if (!apiKey) {
-          throw new Error('API Key is not configured in Vercel environment variables.');
+          throw new Error('API Key is not configured.');
       }
 
       // Use jsonbin.io V3 API structure as requested
