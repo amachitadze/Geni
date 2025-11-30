@@ -32,7 +32,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
   const [error, setError] = useState('');
 
   const generatePassword = () => {
-    // Generate a simple but memorable password
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let pass = '';
     for (let i = 0; i < 12; i++) {
@@ -50,56 +49,49 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     setError('');
     try {
       const jsonString = JSON.stringify(data);
-      
-      // 1. Compress the data
       const compressed = pako.deflate(jsonString);
-      // 2. Convert compressed binary data to Base64
       const compressedBase64 = bufferToBase64(compressed.buffer);
-      
-      // Check size. Vercel serverless functions have a 4.5MB body limit.
-      // We check compressed size. 4MB is a safe buffer.
-      if (compressedBase64.length > 4 * 1024 * 1024) {
-         throw new Error('მონაცემები ძალიან დიდია (4.5MB-ზე მეტი). გთხოვთ წაშალოთ ზოგიერთი სურათი.');
-      }
-
-      // 3. Encrypt the compressed data
       const encryptedData = await encryptData(compressedBase64, password);
       
-      // Prepare FormData for file.io
       const formData = new FormData();
       const blob = new Blob([encryptedData], { type: 'text/plain' });
       formData.append('file', blob, 'tree.data');
-      formData.append('expires', '2w'); // Keep for 2 weeks
-      formData.append('maxDownloads', '1'); // One-time download
+      formData.append('expires', '2w');
+      formData.append('maxDownloads', '1');
 
-      // Determine endpoint based on environment
-      // On Vercel, use the rewrite '/api/share' which maps to 'https://file.io'
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      
-      let response;
-      
-      if (isLocal) {
-          // Fallback for localhost (Vercel rewrites don't work without `vercel dev`)
-          response = await fetch('https://corsproxy.io/?https://file.io', {
-              method: 'POST',
-              body: formData,
-          });
-      } else {
-          // Production Vercel Rewrite
-          response = await fetch('/api/share', {
-              method: 'POST',
-              body: formData,
-          });
+      // Strategy: Try Direct -> Vercel Rewrite -> CORS Proxy
+      const endpoints = [
+          'https://file.io', 
+          '/api/share', 
+          'https://corsproxy.io/?https://file.io'
+      ];
+
+      let result;
+      let uploadSuccess = false;
+
+      for (const endpoint of endpoints) {
+          try {
+              console.log(`ცდა: ${endpoint}...`);
+              const response = await fetch(endpoint, {
+                  method: 'POST',
+                  body: formData,
+              });
+
+              if (response.ok) {
+                  result = await response.json();
+                  if (result.success && result.key) {
+                      uploadSuccess = true;
+                      break; // Success!
+                  }
+              }
+          } catch (e) {
+              console.warn(`ატვირთვა ვერ მოხერხდა ${endpoint}-ზე:`, e);
+              // Continue to next endpoint
+          }
       }
 
-      if (!response.ok) {
-          throw new Error(`Upload failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      
-      if (!result.success || !result.key) {
-          throw new Error('Failed to get file key from server.');
+      if (!uploadSuccess) {
+          throw new Error('სერვერთან დაკავშირება ვერ მოხერხდა.');
       }
 
       const url = `${window.location.origin}${window.location.pathname}?fileKey=${result.key}`;

@@ -312,44 +312,52 @@ function App() {
         setIsPasswordPromptOpen(true);
         
         const fetchFile = async () => {
+            // Strategy: Direct -> Vercel Rewrite -> CORS Proxy
+            const endpoints = [
+                `https://file.io/${fileKey}`,
+                `/api/share/${fileKey}`,
+                `https://corsproxy.io/?https://file.io/${fileKey}`
+            ];
+
             let response;
+            let success = false;
+
+            for (const endpoint of endpoints) {
+                try {
+                    response = await fetch(endpoint);
+                    if (response.status === 404) {
+                        // 404 means file deleted/expired. No point trying other proxies.
+                        setDecryptionError("ბმული ვადაგასულია ან უკვე გამოყენებული.");
+                        setIsPasswordPromptOpen(true);
+                        return;
+                    }
+                    if (response.ok) {
+                        success = true;
+                        break;
+                    }
+                } catch (e) {
+                    console.warn(`Fetch from ${endpoint} failed:`, e);
+                }
+            }
+
+            if (!success || !response) {
+                 console.error("Failed to fetch from all endpoints");
+                 setDecryptionError("მონაცემების ჩამოტვირთვა ვერ მოხერხდა. ბმული სავარაუდოდ ვადაგასულია ან ინტერნეტის პრობლემაა.");
+                 setIsPasswordPromptOpen(true);
+                 return;
+            }
+            
             try {
-                // Determine endpoint based on environment
-                // Use Vercel rewrite in production, fallback to proxy for local
-                const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const endpoint = isLocal 
-                    ? `https://corsproxy.io/?https://file.io/${fileKey}` 
-                    : `/api/share/${fileKey}`;
-
-                response = await fetch(endpoint);
-
-                if (!response) {
-                    throw new Error("Network request failed");
-                }
-                
-                if (response.status === 404) {
-                    setDecryptionError("ბმული ვადაგასულია ან უკვე გამოყენებული.");
-                    setIsPasswordPromptOpen(true);
-                    return;
-                }
-                
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                
-                // file.io returns raw text content for the file download
                 const text = await response.text();
-                
                 if (text) {
                     setEncryptedData(text);
                 } else {
                     throw new Error('Empty response');
                 }
-
             } catch (error) {
-                console.error("Failed to fetch shared data:", error);
-                setDecryptionError("მონაცემების ჩამოტვირთვა ვერ მოხერხდა. ბმული სავარაუდოდ ვადაგასულია ან ინტერნეტის პრობლემაა.");
-                setIsPasswordPromptOpen(true);
+                 console.error("Failed to parse response", error);
+                 setDecryptionError("მონაცემების წაკითხვა ვერ მოხერხდა.");
+                 setIsPasswordPromptOpen(true);
             }
         };
         fetchFile();
