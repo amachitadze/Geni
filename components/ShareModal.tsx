@@ -53,6 +53,36 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
       return newData;
   };
 
+  const uploadToJsonBlob = async (encryptedData: string) => {
+      // Fallback logic for localhost vs production
+      const jsonBlobEndpoint = window.location.hostname === 'localhost'
+        ? 'https://corsproxy.io/?https://jsonblob.com/api/jsonBlob'
+        : '/api/jsonblob';
+
+      const response = await fetch(jsonBlobEndpoint, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+          },
+          body: JSON.stringify({ data: encryptedData }), // Wrap in object
+      });
+
+      if (!response.ok) {
+          throw new Error(`JsonBlob Error: ${response.status}`);
+      }
+
+      // JsonBlob usually returns location in header
+      const locationHeader = response.headers.get('Location');
+      let blobId = '';
+      
+      if (locationHeader) {
+          blobId = locationHeader.split('/').pop() || '';
+      }
+      
+      return blobId;
+  };
+
   const handleGenerateLink = async () => {
     if (!password) {
       setError('გთხოვთ, ჯერ შექმენით პაროლი.');
@@ -69,8 +99,28 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
       const fullCompressed = pako.deflate(fullJsonString);
       const fullCompressedBase64 = bufferToBase64(fullCompressed.buffer);
       const fullEncryptedData = await encryptData(fullCompressedBase64, password);
+      
+      const fullDataSize = new Blob([fullEncryptedData]).size;
+      console.log(`Full Data Size: ${(fullDataSize / 1024).toFixed(2)} KB`);
 
-      // --- ATTEMPT 1: File.io (via Vercel Rewrite) ---
+      // --- STRATEGY: Prioritize JsonBlob if size < 1MB (Fastest & Most Reliable) ---
+      if (fullDataSize < 1000000) { // < 1MB
+          console.log("File is small (<1MB), uploading FULL data to JsonBlob...");
+          try {
+              const blobId = await uploadToJsonBlob(fullEncryptedData);
+              if (blobId) {
+                  const url = `${window.location.origin}${window.location.pathname}?blobId=${blobId}`;
+                  setShareUrl(url);
+                  setServiceUsed('JsonBlob (სრული - სურათებით)');
+                  setIsLoading(false);
+                  return;
+              }
+          } catch (e) {
+              console.warn("JsonBlob full upload failed, trying alternatives...", e);
+          }
+      }
+
+      // --- ATTEMPT 2: File.io (For large files or if JsonBlob failed) ---
       try {
           console.log("Attempting File.io...");
           const formData = new FormData();
@@ -94,7 +144,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
               if (result.success && result.key) {
                   const url = `${window.location.origin}${window.location.pathname}?fileKey=${result.key}`;
                   setShareUrl(url);
-                  setServiceUsed('File.io (სრული)');
+                  setServiceUsed('File.io (სრული - სურათებით)');
                   setIsLoading(false);
                   return; // Success! Exit function.
               }
@@ -104,62 +154,22 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
           console.warn("File.io upload failed, trying fallback...", e);
       }
 
-      // --- ATTEMPT 2: JsonBlob (Fallback - No Images) ---
-      console.log("Attempting JsonBlob fallback...");
+      // --- ATTEMPT 3: JsonBlob (Fallback - No Images) ---
+      // We only reach here if file > 1MB AND File.io failed, OR if file < 1MB and JsonBlob failed initially.
+      console.log("Attempting JsonBlob LITE fallback...");
       const liteData = removeImages(data);
       const liteJsonString = JSON.stringify(liteData);
       const liteCompressed = pako.deflate(liteJsonString);
       const liteCompressedBase64 = bufferToBase64(liteCompressed.buffer);
       const liteEncryptedData = await encryptData(liteCompressedBase64, password);
 
-      // Fallback logic for localhost vs production
-      const jsonBlobEndpoint = window.location.hostname === 'localhost'
-        ? 'https://corsproxy.io/?https://jsonblob.com/api/jsonBlob'
-        : '/api/jsonblob';
-
-      const response = await fetch(jsonBlobEndpoint, {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-          },
-          body: JSON.stringify({ data: liteEncryptedData }), // Wrap in object
-      });
-
-      if (response.ok) {
-          // JsonBlob usually returns location in header
-          const locationHeader = response.headers.get('Location');
-          let blobId = '';
-          
-          if (locationHeader) {
-              blobId = locationHeader.split('/').pop() || '';
-          }
-          
-          // Fallback if Location header is missing (sometimes happens with CORS proxies)
-          // Try to parse body if possible (rare for jsonblob but worth a shot)
-          if (!blobId) {
-             try {
-                 const jsonRes = await response.json();
-                 // If the proxy returns the location or id
-                 // This part is tricky with pure jsonblob API as it returns 201 + Header
-                 // But let's assume if we are here, we might need a manual ID extraction if proxy returns headers in body
-             } catch(e) {}
-          }
-
-          // If we still don't have an ID and we used corsproxy, we might be stuck.
-          // However, Vercel rewrite should preserve headers.
-          
-          if (locationHeader || blobId) {
-             if (!blobId && locationHeader) blobId = locationHeader.split('/').pop() || '';
-             
-             if (blobId) {
-                const url = `${window.location.origin}${window.location.pathname}?blobId=${blobId}`;
-                setShareUrl(url);
-                setServiceUsed('JsonBlob (მსუბუქი - სურათების გარეშე)');
-                setIsLoading(false);
-                return;
-             }
-          }
+      const blobId = await uploadToJsonBlob(liteEncryptedData);
+      if (blobId) {
+        const url = `${window.location.origin}${window.location.pathname}?blobId=${blobId}`;
+        setShareUrl(url);
+        setServiceUsed('JsonBlob (მსუბუქი - სურათების გარეშე)');
+        setIsLoading(false);
+        return;
       }
       
       throw new Error('ყველა სერვისი მიუწვდომელია.');
@@ -218,7 +228,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
             <div className="space-y-4 pt-4 border-t border-gray-300 dark:border-gray-700">
                 {serviceUsed && (
                     <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-                        გამოყენებული სერვისი: <span className="font-semibold">{serviceUsed}</span>
+                        გამოყენებული სერვისი: <span className="font-semibold text-purple-600 dark:text-purple-400">{serviceUsed}</span>
                     </p>
                 )}
                 <div>
