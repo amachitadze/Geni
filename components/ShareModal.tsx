@@ -50,6 +50,12 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     setError('');
     try {
       const jsonString = JSON.stringify(data);
+      
+      // Check data size rough estimation (UTF-16 char codes are 2 bytes, but here we treat as 1 for base estimation)
+      if (jsonString.length > 5 * 1024 * 1024) {
+          throw new Error('მონაცემები ძალიან დიდია. გთხოვთ წაშალოთ ზოგიერთი სურათი.');
+      }
+
       // 1. Compress the data
       const compressed = pako.deflate(jsonString);
       // 2. Convert compressed binary data to Base64 to safely encrypt it as a string
@@ -57,54 +63,51 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
       // 3. Encrypt the compressed data
       const encryptedData = await encryptData(compressedBase64, password);
       
-      const blob = new Blob([encryptedData], { type: 'text/plain' });
+      // JSONBlob expects JSON data. We wrap our encrypted string.
+      const payload = {
+          data: encryptedData
+      };
+
+      // Determine endpoint based on environment
+      // On Vercel, we use the rewrite '/api/jsonblob' which maps to 'https://jsonblob.com/api/jsonBlob'
+      // On Localhost, Vercel rewrites don't work by default (unless using `vercel dev`), so we fallback to corsproxy
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const endpoint = isLocal 
+        ? 'https://corsproxy.io/?https://jsonblob.com/api/jsonBlob' 
+        : '/api/jsonblob';
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      // JSONBlob returns the location of the new blob in the headers
+      const locationHeader = response.headers.get('Location') || response.headers.get('x-jsonblob');
       
-      // Upload logic with fallback strategy
-      let response;
-      
-      // Attempt 1: Direct Upload
-      try {
-          const formDataDirect = new FormData();
-          formDataDirect.append('file', blob, 'tree.enc');
-          
-          response = await fetch('https://file.io', {
-            method: 'POST',
-            body: formDataDirect,
-          });
-      } catch (directError) {
-          console.warn("Direct upload failed, trying proxy...", directError);
+      if (!locationHeader) {
+          throw new Error('Failed to retrieve Blob ID from server.');
       }
 
-      // Attempt 2: Proxy Upload (only if direct failed or threw error)
-      if (!response || !response.ok) {
-          try {
-              const formDataProxy = new FormData();
-              formDataProxy.append('file', blob, 'tree.enc');
-              
-              response = await fetch('https://corsproxy.io/?https://file.io', {
-                method: 'POST',
-                body: formDataProxy,
-              });
-          } catch (proxyError) {
-              console.error("Proxy upload also failed", proxyError);
-              throw new Error('All upload attempts failed');
-          }
+      // Extract ID from the URL (it's the last part of the path)
+      const blobId = locationHeader.split('/').pop();
+
+      if (!blobId) {
+          throw new Error('Invalid Blob ID.');
       }
 
-      if (!response || !response.ok) {
-          throw new Error('Upload failed');
-      }
-
-      const result = await response.json();
-      if (!result.success || !result.key) {
-          throw new Error('Invalid response from server');
-      }
-
-      const url = `${window.location.origin}${window.location.pathname}?fileKey=${result.key}`;
+      const url = `${window.location.origin}${window.location.pathname}?blobId=${blobId}`;
       setShareUrl(url);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Link generation failed", e);
-      setError('ბმულის გენერაცია ვერ მოხერხდა. შეამოწმეთ ინტერნეტ კავშირი.');
+      setError(`ბმულის გენერაცია ვერ მოხერხდა: ${e.message || 'შეამოწმეთ ინტერნეტ კავშირი.'}`);
     } finally {
       setIsLoading(false);
     }
@@ -128,11 +131,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
           </button>
         </header>
         <p className="text-gray-600 dark:text-gray-400 mb-4">შექმენით დაშიფრული ბმული და პაროლი, რომ გაუზიაროთ თქვენი გენეალოგიური ხე სხვებს.</p>
-        <div className="bg-yellow-50 dark:bg-yellow-900/30 p-3 rounded-md border border-yellow-200 dark:border-yellow-700 mb-4">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>ყურადღება:</strong> ეს ბმული არის <strong>ერთჯერადი</strong>. მიმღების მიერ გახსნისთანავე ფაილი წაიშლება სერვერიდან.
-            </p>
-        </div>
         
         <div className="space-y-4">
           <div>

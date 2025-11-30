@@ -93,7 +93,7 @@ const ViewCompactIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 const ViewNormalIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
     </svg>
 );
 const ListBulletIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -305,30 +305,30 @@ function App() {
   // Check for shared data in URL on initial mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const fileKey = urlParams.get('fileKey');
+    const blobId = urlParams.get('blobId');
 
-    if (fileKey) {
+    if (blobId) {
         setIsViewingTree(true);
         setIsPasswordPromptOpen(true);
         
         const fetchFile = async () => {
             let response;
             try {
-                // Attempt 1: Direct fetch
-                try {
-                    response = await fetch(`https://file.io/${fileKey}`);
-                } catch (directError) {
-                    console.warn("Direct download failed, switching to proxy...", directError);
-                    // Attempt 2: Proxy fetch
-                    response = await fetch(`https://corsproxy.io/?https://file.io/${fileKey}`);
-                }
+                // Determine endpoint based on environment
+                // Use Vercel rewrite in production, fallback to proxy for local
+                const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                const endpoint = isLocal 
+                    ? `https://corsproxy.io/?https://jsonblob.com/api/jsonBlob/${blobId}` 
+                    : `/api/jsonblob/${blobId}`;
+
+                response = await fetch(endpoint);
 
                 if (!response) {
                     throw new Error("Network request failed");
                 }
                 
                 if (response.status === 404) {
-                    setDecryptionError("ბმული ვადაგასულია ან უკვე გამოყენებულია. ეს ბმული მხოლოდ ერთხელ მუშაობს.");
+                    setDecryptionError("ბმული ვადაგასულია ან არასწორია.");
                     setIsPasswordPromptOpen(true);
                     return;
                 }
@@ -337,17 +337,14 @@ function App() {
                     throw new Error('Network response was not ok');
                 }
                 
-                const text = await response.text();
-                // Check if the response is actually a file.io error JSON (sometimes happens)
-                try {
-                    const json = JSON.parse(text);
-                    if (json && json.success === false) {
-                         throw new Error(json.message || 'File not found');
-                    }
-                } catch (e) {
-                    // It's likely the encrypted string, which is not JSON
+                const json = await response.json();
+                
+                if (json && json.data) {
+                    setEncryptedData(json.data);
+                } else {
+                    throw new Error('Invalid data format');
                 }
-                setEncryptedData(text);
+
             } catch (error) {
                 console.error("Failed to fetch shared data:", error);
                 setDecryptionError("მონაცემების ჩამოტვირთვა ვერ მოხერხდა. ბმული სავარაუდოდ ვადაგასულია ან ინტერნეტის პრობლემაა.");
