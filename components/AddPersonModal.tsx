@@ -51,6 +51,11 @@ const CloudUploadIcon: React.FC<{ className?: string }> = ({ className }) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
     </svg>
 );
+const KeyIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+    </svg>
+);
 
 
 // Converts storage format (YYYY-MM-DD or YYYY) to display format (DD.MM.YYYY or YYYY)
@@ -100,8 +105,33 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
   
   // Upload state
   const [isUploading, setIsUploading] = useState(false);
+  const [manualApiKey, setManualApiKey] = useState('');
+  const [hasValidApiKey, setHasValidApiKey] = useState(false);
 
   const isEditMode = context?.action === 'edit';
+
+  // Check for API key on mount
+  useEffect(() => {
+      const envKey = typeof process !== 'undefined' && process.env ? process.env.REACT_APP_IMGBB_API_KEY : '';
+      const localKey = localStorage.getItem('imgbb_api_key');
+      
+      if (envKey) {
+          setHasValidApiKey(true);
+      } else if (localKey) {
+          setManualApiKey(localKey);
+          setHasValidApiKey(true);
+      } else {
+          setHasValidApiKey(false);
+      }
+  }, []);
+
+  const handleManualKeySave = () => {
+      if (manualApiKey.trim()) {
+          localStorage.setItem('imgbb_api_key', manualApiKey.trim());
+          setHasValidApiKey(true);
+          alert("API გასაღები შენახულია.");
+      }
+  };
 
   // Effect to initialize or reset the form when the modal opens or its context changes.
   useEffect(() => {
@@ -192,17 +222,24 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
           return;
       }
 
-      // Check for ImgBB API Key in Environment Variables
-      const apiKey = process.env.REACT_APP_IMGBB_API_KEY;
+      // Priority: 1. Env Var, 2. Local Storage
+      const envKey = typeof process !== 'undefined' && process.env ? process.env.REACT_APP_IMGBB_API_KEY : undefined;
+      const apiKey = envKey || localStorage.getItem('imgbb_api_key');
 
       if (apiKey) {
         // --- ImgBB Logic ---
         setIsUploading(true);
         const formData = new FormData();
         formData.append('image', file);
-        // Optional: Send name for easier management in ImgBB dashboard
-        if (firstName || lastName) {
-            formData.append('name', `${firstName}-${lastName}`.trim());
+        
+        // Name Logic: Use Person Name if available, otherwise original filename
+        const personName = `${firstName} ${lastName}`.trim();
+        if (personName) {
+            formData.append('name', personName);
+        } else {
+            // Fallback to original filename without extension
+            const originalName = file.name.split('.').slice(0, -1).join('.');
+            formData.append('name', originalName || 'image');
         }
 
         try {
@@ -219,7 +256,7 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
             }
         } catch (error) {
             console.error("ImgBB upload failed:", error);
-            alert("სურათის სერვერზე ატვირთვა ვერ მოხერხდა. გამოყენებული იქნება ლოკალური შენახვა (Base64).");
+            alert("სურათის სერვერზე ატვირთვა ვერ მოხერხდა. გამოყენებული იქნება ლოკალური შენახვა (Base64). შეამოწმეთ API Key.");
             
             // Fallback: Convert to Base64 (Local Storage) if API fails
             const reader = new FileReader();
@@ -423,11 +460,35 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
                         </button>
                         )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                        {process.env.REACT_APP_IMGBB_API_KEY 
-                            ? "სურათი აიტვირთება ImgBB სერვერზე (ზოგავს სივრცეს)." 
-                            : "სურათი შეინახება ფაილში (ზრდის ფაილის ზომას)."}
-                    </p>
+                    
+                    {/* ImgBB Status & Manual Key Input */}
+                    <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700/30 rounded border border-gray-200 dark:border-gray-700">
+                        <p className={`text-xs ${hasValidApiKey ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`}>
+                            {hasValidApiKey 
+                                ? "✅ ImgBB API აქტიურია. სურათი აიტვირთება სერვერზე." 
+                                : "⚠️ ImgBB API არ არის ნაპოვნი. სურათი შეინახება ფაილში (გაზრდის ზომას)."}
+                        </p>
+                        
+                        {!hasValidApiKey && (
+                            <div className="mt-2 flex items-center gap-2">
+                                <KeyIcon className="w-4 h-4 text-gray-400"/>
+                                <input 
+                                    type="text" 
+                                    value={manualApiKey} 
+                                    onChange={(e) => setManualApiKey(e.target.value)} 
+                                    placeholder="ჩასვით ImgBB API Key აქ..." 
+                                    className="text-xs p-1 flex-grow bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-purple-500 outline-none dark:text-white"
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={handleManualKeySave}
+                                    className="text-xs px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700"
+                                >
+                                    შენახვა
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
