@@ -49,41 +49,33 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     setIsLoading(true);
     setError('');
     try {
-      if (!process.env.JSONBIN_API_KEY) {
-        throw new Error('API key for storage service is not configured.');
-      }
-
       const jsonString = JSON.stringify(data);
       const compressed = pako.deflate(jsonString);
       const compressedBase64 = bufferToBase64(compressed.buffer);
       const encryptedData = await encryptData(compressedBase64, password);
       
-      const response = await fetch('https://api.jsonbin.io/v3/b', {
+      // Use npoint.io instead of jsonbin.io
+      const response = await fetch('https://api.npoint.io/', {
           method: 'POST',
           headers: {
-              'Content-Type': 'application/json',
-              'X-Master-Key': process.env.JSONBIN_API_KEY,
-              'X-Bin-Name': `geni-shared-tree-${new Date().toISOString()}`,
-              'X-Bin-Private': 'true'
+              'Content-Type': 'application/json'
           },
           body: JSON.stringify({ encryptedData })
       });
 
       if (!response.ok) {
-          const errorData = await response.json();
-          console.error("JSONBin upload error:", errorData);
           throw new Error('Failed to upload data to storage service.');
       }
 
       const result = await response.json();
-      const binId = result.metadata.id;
+      const binId = result.id; // npoint returns { "id": "..." }
 
       const url = `${window.location.origin}${window.location.pathname}?binId=${binId}`;
       setShareUrl(url);
 
     } catch (e: any) {
       console.error("Link generation failed", e);
-      setError('ბმულის გენერაცია ვერ მოხერხდა. შეამოწმეთ API გასაღები და ინტერნეტ კავშირი.');
+      setError('ბმულის გენერაცია ვერ მოხერხდა. შეამოწმეთ ინტერნეტ კავშირი.');
     } finally {
       setIsLoading(false);
     }

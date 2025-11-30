@@ -796,24 +796,15 @@ function App() {
     setIsDecrypting(true);
     setDecryptionError(null);
     try {
-      if (!process.env.JSONBIN_API_KEY) {
-        throw new Error('API key for storage service is not configured.');
-      }
-      
-      const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-        headers: {
-          'X-Master-Key': process.env.JSONBIN_API_KEY
-        }
-      });
+      // Use npoint.io instead of jsonbin.io
+      const response = await fetch(`https://api.npoint.io/${binId}`);
       
       if (!response.ok) {
-          const errorData = await response.json();
-          console.error("JSONBin fetch error:", errorData);
           throw new Error('Failed to fetch data from storage service.');
       }
       
       const binData = await response.json();
-      const encryptedData = binData.record.encryptedData;
+      const encryptedData = binData.encryptedData;
       
       if (!encryptedData) {
           throw new Error('Storage bin is empty or malformed.');
