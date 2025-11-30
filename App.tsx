@@ -88,7 +88,7 @@ const MoonIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 const ViewCompactIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
     </svg>
 );
 const ViewNormalIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -254,7 +254,7 @@ function App() {
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isPasswordPromptOpen, setIsPasswordPromptOpen] = useState(false);
-  const [binId, setBinId] = useState<string | null>(null);
+  const [encryptedData, setEncryptedData] = useState<string | null>(null);
   const [decryptionError, setDecryptionError] = useState<string | null>(null);
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -305,9 +305,9 @@ function App() {
   // Check for shared data in URL on initial mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const blobIdParam = urlParams.get('blobId'); // Changed from 'id' to 'blobId' to distinguish
-    if (blobIdParam) {
-      setBinId(blobIdParam);
+    const data = urlParams.get('data');
+    if (data) {
+      setEncryptedData(decodeURIComponent(data));
       setIsPasswordPromptOpen(true);
       setIsViewingTree(true);
     }
@@ -792,29 +792,10 @@ function App() {
   };
 
   const handlePasswordSubmit = async (password: string) => {
-    if (!binId) return;
+    if (!encryptedData) return;
     setIsDecrypting(true);
     setDecryptionError(null);
     try {
-      // Use jsonblob.com which supports large files and doesn't require an API key
-      const response = await fetch(`https://jsonblob.com/api/jsonBlob/${binId}`, {
-          method: 'GET',
-          headers: {
-              'Accept': 'application/json'
-          }
-      });
-      
-      if (!response.ok) {
-          throw new Error('მონაცემების წამოღება ვერ მოხერხდა.');
-      }
-      
-      const data = await response.json();
-      const encryptedData = data.encryptedData;
-      
-      if (!encryptedData) {
-          throw new Error('მონაცემები ცარიელია ან დაზიანებული.');
-      }
-
       const decryptedCompressedBase64 = await decryptData(encryptedData, password);
       const compressedBuffer = base64ToBuffer(decryptedCompressedBase64);
       const decompressedString = pako.inflate(compressedBuffer, { to: 'string' });

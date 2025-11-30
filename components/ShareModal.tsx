@@ -50,43 +50,19 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     setError('');
     try {
       const jsonString = JSON.stringify(data);
+      // 1. Compress the data
       const compressed = pako.deflate(jsonString);
+      // 2. Convert compressed binary data to Base64 to safely encrypt it as a string
       const compressedBase64 = bufferToBase64(compressed.buffer);
-      
-      // Check size before upload (jsonblob limit is 1MB free)
-      if (compressedBase64.length > 1024 * 1024) {
-           throw new Error('მონაცემების ზომა აღემატება 1MB-ს (უფასო ლიმიტი). გთხოვთ, შეამციროთ სურათების რაოდენობა ან ზომა.');
-      }
-
+      // 3. Encrypt the compressed data
       const encryptedData = await encryptData(compressedBase64, password);
       
-      // Upload to jsonblob.com (No API Key needed, supports CORS, 1MB limit)
-      const response = await fetch('https://jsonblob.com/api/jsonBlob', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-          },
-          body: JSON.stringify({ encryptedData })
-      });
-
-      if (!response.ok) {
-          throw new Error(`ატვირთვა ვერ მოხერხდა (სტატუსი: ${response.status})`);
-      }
-
-      // Get the ID from the Location header
-      const location = response.headers.get('Location');
-      if (!location) {
-          throw new Error('სერვერმა არ დააბრუნა მონაცემების მისამართი.');
-      }
-      
-      const blobId = location.split('/').pop();
-      const url = `${window.location.origin}${window.location.pathname}?blobId=${blobId}`;
+      const encodedData = encodeURIComponent(encryptedData);
+      const url = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
       setShareUrl(url);
-
-    } catch (e: any) {
-      console.error("Link generation failed", e);
-      setError('ბმულის გენერაცია ვერ მოხერხდა. ' + (e.message || 'შეამოწმეთ ინტერნეტ კავშირი.'));
+    } catch (e) {
+      console.error("Encryption/Compression failed", e);
+      setError('ბმულის გენერაცია ვერ მოხერხდა. შესაძლოა, ხე ძალიან დიდია.');
     } finally {
       setIsLoading(false);
     }
