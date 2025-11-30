@@ -28,6 +28,7 @@ const CopyIcon: React.FC<{ className?: string }> = ({ className }) => (
 const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
   const [password, setPassword] = useState('');
   const [shareUrl, setShareUrl] = useState('');
+  const [serviceUsed, setServiceUsed] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,6 +41,18 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     setPassword(pass);
   };
 
+  const removeImages = (originalData: any) => {
+      const newData = JSON.parse(JSON.stringify(originalData));
+      if (newData.people) {
+          Object.keys(newData.people).forEach(key => {
+              if (newData.people[key].imageUrl) {
+                  delete newData.people[key].imageUrl;
+              }
+          });
+      }
+      return newData;
+  };
+
   const handleGenerateLink = async () => {
     if (!password) {
       setError('გთხოვთ, ჯერ შექმენით პაროლი.');
@@ -47,58 +60,113 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     }
     setIsLoading(true);
     setError('');
+    setShareUrl('');
+    setServiceUsed('');
+
     try {
-      const jsonString = JSON.stringify(data);
-      const compressed = pako.deflate(jsonString);
-      const compressedBase64 = bufferToBase64(compressed.buffer);
-      const encryptedData = await encryptData(compressedBase64, password);
-      
-      const formData = new FormData();
-      const blob = new Blob([encryptedData], { type: 'text/plain' });
-      formData.append('file', blob, 'tree.data');
-      formData.append('expires', '2w');
-      formData.append('maxDownloads', '1');
+      // 1. Prepare Full Data (with images)
+      const fullJsonString = JSON.stringify(data);
+      const fullCompressed = pako.deflate(fullJsonString);
+      const fullCompressedBase64 = bufferToBase64(fullCompressed.buffer);
+      const fullEncryptedData = await encryptData(fullCompressedBase64, password);
 
-      // Strategy: Try Direct -> Vercel Rewrite -> CORS Proxy
-      const endpoints = [
-          'https://file.io', 
-          '/api/share', 
-          'https://corsproxy.io/?https://file.io'
-      ];
+      // --- ATTEMPT 1: File.io (via Vercel Rewrite) ---
+      try {
+          console.log("Attempting File.io...");
+          const formData = new FormData();
+          const blob = new Blob([fullEncryptedData], { type: 'text/plain' });
+          formData.append('file', blob, 'tree.data');
+          formData.append('expires', '2w');
+          formData.append('maxDownloads', '1');
 
-      let result;
-      let uploadSuccess = false;
+          // Fallback logic for localhost vs production
+          const fileIoEndpoint = window.location.hostname === 'localhost' 
+            ? 'https://corsproxy.io/?https://file.io' 
+            : '/api/share';
 
-      for (const endpoint of endpoints) {
-          try {
-              console.log(`ცდა: ${endpoint}...`);
-              const response = await fetch(endpoint, {
-                  method: 'POST',
-                  body: formData,
-              });
+          const response = await fetch(fileIoEndpoint, {
+              method: 'POST',
+              body: formData,
+          });
 
-              if (response.ok) {
-                  result = await response.json();
-                  if (result.success && result.key) {
-                      uploadSuccess = true;
-                      break; // Success!
-                  }
+          if (response.ok) {
+              const result = await response.json();
+              if (result.success && result.key) {
+                  const url = `${window.location.origin}${window.location.pathname}?fileKey=${result.key}`;
+                  setShareUrl(url);
+                  setServiceUsed('File.io (სრული)');
+                  setIsLoading(false);
+                  return; // Success! Exit function.
               }
-          } catch (e) {
-              console.warn(`ატვირთვა ვერ მოხერხდა ${endpoint}-ზე:`, e);
-              // Continue to next endpoint
+          }
+          console.warn("File.io response was not successful", response.status);
+      } catch (e) {
+          console.warn("File.io upload failed, trying fallback...", e);
+      }
+
+      // --- ATTEMPT 2: JsonBlob (Fallback - No Images) ---
+      console.log("Attempting JsonBlob fallback...");
+      const liteData = removeImages(data);
+      const liteJsonString = JSON.stringify(liteData);
+      const liteCompressed = pako.deflate(liteJsonString);
+      const liteCompressedBase64 = bufferToBase64(liteCompressed.buffer);
+      const liteEncryptedData = await encryptData(liteCompressedBase64, password);
+
+      // Fallback logic for localhost vs production
+      const jsonBlobEndpoint = window.location.hostname === 'localhost'
+        ? 'https://corsproxy.io/?https://jsonblob.com/api/jsonBlob'
+        : '/api/jsonblob';
+
+      const response = await fetch(jsonBlobEndpoint, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+          },
+          body: JSON.stringify({ data: liteEncryptedData }), // Wrap in object
+      });
+
+      if (response.ok) {
+          // JsonBlob usually returns location in header
+          const locationHeader = response.headers.get('Location');
+          let blobId = '';
+          
+          if (locationHeader) {
+              blobId = locationHeader.split('/').pop() || '';
+          }
+          
+          // Fallback if Location header is missing (sometimes happens with CORS proxies)
+          // Try to parse body if possible (rare for jsonblob but worth a shot)
+          if (!blobId) {
+             try {
+                 const jsonRes = await response.json();
+                 // If the proxy returns the location or id
+                 // This part is tricky with pure jsonblob API as it returns 201 + Header
+                 // But let's assume if we are here, we might need a manual ID extraction if proxy returns headers in body
+             } catch(e) {}
+          }
+
+          // If we still don't have an ID and we used corsproxy, we might be stuck.
+          // However, Vercel rewrite should preserve headers.
+          
+          if (locationHeader || blobId) {
+             if (!blobId && locationHeader) blobId = locationHeader.split('/').pop() || '';
+             
+             if (blobId) {
+                const url = `${window.location.origin}${window.location.pathname}?blobId=${blobId}`;
+                setShareUrl(url);
+                setServiceUsed('JsonBlob (მსუბუქი - სურათების გარეშე)');
+                setIsLoading(false);
+                return;
+             }
           }
       }
+      
+      throw new Error('ყველა სერვისი მიუწვდომელია.');
 
-      if (!uploadSuccess) {
-          throw new Error('სერვერთან დაკავშირება ვერ მოხერხდა.');
-      }
-
-      const url = `${window.location.origin}${window.location.pathname}?fileKey=${result.key}`;
-      setShareUrl(url);
     } catch (e: any) {
       console.error("Link generation failed", e);
-      setError(`ბმულის გენერაცია ვერ მოხერხდა: ${e.message || 'შეამოწმეთ ინტერნეტ კავშირი.'}`);
+      setError(`ბმულის გენერაცია ვერ მოხერხდა. შეამოწმეთ ინტერნეტ კავშირი.`);
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +193,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
         
         <div className="p-3 mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md">
             <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>ყურადღება:</strong> ეს ბმული არის <strong>ერთჯერადი</strong>. მიმღების მიერ გახსნისთანავე ფაილი წაიშლება სერვერიდან.
+                <strong>ყურადღება:</strong> ეს ბმული არის <strong>ერთჯერადი</strong>. მიმღების მიერ გახსნისთანავე ფაილი წაიშლება სერვერიდან (File.io-ს შემთხვევაში).
             </p>
         </div>
 
@@ -148,6 +216,11 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
 
           {shareUrl && (
             <div className="space-y-4 pt-4 border-t border-gray-300 dark:border-gray-700">
+                {serviceUsed && (
+                    <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                        გამოყენებული სერვისი: <span className="font-semibold">{serviceUsed}</span>
+                    </p>
+                )}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">გასაზიარებელი ბმული</label>
                     <div className="flex gap-2">

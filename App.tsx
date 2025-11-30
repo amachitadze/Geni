@@ -93,7 +93,7 @@ const ViewCompactIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 const ViewNormalIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
     </svg>
 );
 const ListBulletIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -306,57 +306,55 @@ function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const fileKey = urlParams.get('fileKey');
+    const blobId = urlParams.get('blobId');
 
-    if (fileKey) {
+    if (fileKey || blobId) {
         setIsViewingTree(true);
         setIsPasswordPromptOpen(true);
         
+        let endpoint = '';
+        if (fileKey) {
+            // Use Vercel rewrite for file.io
+            endpoint = window.location.hostname === 'localhost' 
+                ? `https://corsproxy.io/?https://file.io/${fileKey}` 
+                : `/api/share/${fileKey}`;
+        } else if (blobId) {
+            // Use Vercel rewrite for jsonblob.com
+            endpoint = window.location.hostname === 'localhost'
+                ? `https://corsproxy.io/?https://jsonblob.com/api/jsonBlob/${blobId}`
+                : `/api/jsonblob/${blobId}`;
+        }
+
         const fetchFile = async () => {
-            // Strategy: Direct -> Vercel Rewrite -> CORS Proxy
-            const endpoints = [
-                `https://file.io/${fileKey}`,
-                `/api/share/${fileKey}`,
-                `https://corsproxy.io/?https://file.io/${fileKey}`
-            ];
-
-            let response;
-            let success = false;
-
-            for (const endpoint of endpoints) {
-                try {
-                    response = await fetch(endpoint);
-                    if (response.status === 404) {
-                        // 404 means file deleted/expired. No point trying other proxies.
-                        setDecryptionError("ბმული ვადაგასულია ან უკვე გამოყენებული.");
-                        setIsPasswordPromptOpen(true);
-                        return;
-                    }
-                    if (response.ok) {
-                        success = true;
-                        break;
-                    }
-                } catch (e) {
-                    console.warn(`Fetch from ${endpoint} failed:`, e);
-                }
-            }
-
-            if (!success || !response) {
-                 console.error("Failed to fetch from all endpoints");
-                 setDecryptionError("მონაცემების ჩამოტვირთვა ვერ მოხერხდა. ბმული სავარაუდოდ ვადაგასულია ან ინტერნეტის პრობლემაა.");
-                 setIsPasswordPromptOpen(true);
-                 return;
-            }
-            
             try {
-                const text = await response.text();
-                if (text) {
-                    setEncryptedData(text);
+                const response = await fetch(endpoint);
+                if (response.status === 404) {
+                    setDecryptionError("ბმული ვადაგასულია ან უკვე გამოყენებული.");
+                    setIsPasswordPromptOpen(true);
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`Fetch failed with status ${response.status}`);
+                }
+
+                if (blobId) {
+                    const jsonData = await response.json();
+                    if (jsonData && jsonData.data) {
+                        setEncryptedData(jsonData.data);
+                    } else {
+                        throw new Error('Invalid JSONBlob format');
+                    }
                 } else {
-                    throw new Error('Empty response');
+                    const text = await response.text();
+                    if (text) {
+                        setEncryptedData(text);
+                    } else {
+                        throw new Error('Empty response');
+                    }
                 }
             } catch (error) {
-                 console.error("Failed to parse response", error);
-                 setDecryptionError("მონაცემების წაკითხვა ვერ მოხერხდა.");
+                 console.error("Failed to fetch data:", error);
+                 setDecryptionError("მონაცემების ჩამოტვირთვა ვერ მოხერხდა. ბმული სავარაუდოდ ვადაგასულია ან ინტერნეტის პრობლემაა.");
                  setIsPasswordPromptOpen(true);
             }
         };
