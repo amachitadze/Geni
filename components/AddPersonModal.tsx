@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Gender, ModalContext, Person, Relationship } from '../types';
 
@@ -43,6 +44,11 @@ const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+    </svg>
+);
+const CloudUploadIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
     </svg>
 );
 
@@ -91,6 +97,9 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
   const [submitText, setSubmitText] = useState('');
   const [spouseMode, setSpouseMode] = useState<'new' | 'existing'>('new');
   const [selectedExSpouseId, setSelectedExSpouseId] = useState('');
+  
+  // Upload state
+  const [isUploading, setIsUploading] = useState(false);
 
   const isEditMode = context?.action === 'edit';
 
@@ -113,6 +122,7 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
       setRelationship('child');
       setSpouseMode('new');
       setSelectedExSpouseId('');
+      setIsUploading(false);
     };
 
     if (isEditMode && personToEdit) {
@@ -174,18 +184,59 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
     }
   }, [isOpen, context, anchorPerson, anchorSpouse, relationship, isEditMode]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-          alert("სურათის ზომა არ უნდა აღემატებოდეს 2MB-ს.");
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+          alert("სურათის ზომა არ უნდა აღემატებოდეს 5MB-ს.");
           return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+
+      // Check for ImgBB API Key in Environment Variables
+      const apiKey = process.env.REACT_APP_IMGBB_API_KEY;
+
+      if (apiKey) {
+        // --- ImgBB Logic ---
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('image', file);
+        // Optional: Send name for easier management in ImgBB dashboard
+        if (firstName || lastName) {
+            formData.append('name', `${firstName}-${lastName}`.trim());
+        }
+
+        try {
+            const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                setImageUrl(data.data.url);
+            } else {
+                throw new Error(data.error?.message || 'ატვირთვა ვერ მოხერხდა');
+            }
+        } catch (error) {
+            console.error("ImgBB upload failed:", error);
+            alert("სურათის სერვერზე ატვირთვა ვერ მოხერხდა. გამოყენებული იქნება ლოკალური შენახვა (Base64).");
+            
+            // Fallback: Convert to Base64 (Local Storage) if API fails
+            const reader = new FileReader();
+            reader.onloadend = () => setImageUrl(reader.result as string);
+            reader.readAsDataURL(file);
+        } finally {
+            setIsUploading(false);
+        }
+      } else {
+        // --- Default Logic (No API Key) ---
+        // Convert to Base64 (Store inside JSON)
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImageUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
   
@@ -331,10 +382,21 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
                     <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">პროფილის სურათი</label>
                     <div className="mt-2 flex items-center gap-4">
                         {imageUrl ? (
-                        <img src={imageUrl} alt="პროფილი" className="w-16 h-16 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600" />
+                        <div className="relative">
+                            <img src={imageUrl} alt="პროფილი" className="w-16 h-16 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600" />
+                            {isUploading && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                </div>
+                            )}
+                        </div>
                         ) : (
-                        <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center border-2 border-gray-300 dark:border-gray-600">
-                            <ImageIcon className="w-8 h-8 text-gray-400 dark:text-gray-500"/>
+                        <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center border-2 border-gray-300 dark:border-gray-600 relative">
+                            {isUploading ? (
+                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500"></div>
+                            ) : (
+                                <ImageIcon className="w-8 h-8 text-gray-400 dark:text-gray-500"/>
+                            )}
                         </div>
                         )}
                         <input
@@ -343,17 +405,30 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
                         accept="image/png, image/jpeg, image/gif"
                         onChange={handleImageUpload}
                         className="hidden"
+                        disabled={isUploading}
                         />
-                        <label htmlFor="imageUpload" className="cursor-pointer px-3 py-2 rounded-md bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-sm font-medium text-gray-800 dark:text-gray-100">
-                        სურათის არჩევა
+                        <label htmlFor="imageUpload" className={`cursor-pointer px-3 py-2 rounded-md bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-sm font-medium text-gray-800 dark:text-gray-100 flex items-center gap-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            {isUploading ? (
+                                <span>იტვირთება...</span>
+                            ) : (
+                                <>
+                                    <CloudUploadIcon className="w-4 h-4" />
+                                    <span>სურათის არჩევა</span>
+                                </>
+                            )}
                         </label>
-                        {imageUrl && (
+                        {imageUrl && !isUploading && (
                         <button type="button" onClick={() => setImageUrl('')} className="text-xs text-red-500 dark:text-red-400 hover:underline">
                             წაშლა
                         </button>
                         )}
                     </div>
-                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                        {process.env.REACT_APP_IMGBB_API_KEY 
+                            ? "სურათი აიტვირთება ImgBB სერვერზე (ზოგავს სივრცეს)." 
+                            : "სურათი შეინახება ფაილში (ზრდის ფაილის ზომას)."}
+                    </p>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -431,7 +506,7 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
                 <CloseIcon className="w-5 h-5" />
                 <span className="hidden sm:inline">გაუქმება</span>
               </button>
-              <button type="submit" className="h-10 px-3 sm:px-4 rounded-md bg-purple-600 hover:bg-purple-700 text-white transition-colors flex items-center gap-2" title={submitText}>
+              <button type="submit" disabled={isUploading} className="h-10 px-3 sm:px-4 rounded-md bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 dark:disabled:bg-purple-800 disabled:cursor-not-allowed text-white transition-colors flex items-center gap-2" title={submitText}>
                 <CheckIcon className="w-5 h-5" />
                 <span className="hidden sm:inline">{submitText}</span>
               </button>
