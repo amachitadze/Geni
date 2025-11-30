@@ -305,9 +305,9 @@ function App() {
   // Check for shared data in URL on initial mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const blobId = urlParams.get('blobId');
+    const fileKey = urlParams.get('fileKey');
 
-    if (blobId) {
+    if (fileKey) {
         setIsViewingTree(true);
         setIsPasswordPromptOpen(true);
         
@@ -318,8 +318,8 @@ function App() {
                 // Use Vercel rewrite in production, fallback to proxy for local
                 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                 const endpoint = isLocal 
-                    ? `https://corsproxy.io/?https://jsonblob.com/api/jsonBlob/${blobId}` 
-                    : `/api/jsonblob/${blobId}`;
+                    ? `https://corsproxy.io/?https://file.io/${fileKey}` 
+                    : `/api/share/${fileKey}`;
 
                 response = await fetch(endpoint);
 
@@ -328,7 +328,7 @@ function App() {
                 }
                 
                 if (response.status === 404) {
-                    setDecryptionError("ბმული ვადაგასულია ან არასწორია.");
+                    setDecryptionError("ბმული ვადაგასულია ან უკვე გამოყენებული.");
                     setIsPasswordPromptOpen(true);
                     return;
                 }
@@ -337,12 +337,13 @@ function App() {
                     throw new Error('Network response was not ok');
                 }
                 
-                const json = await response.json();
+                // file.io returns raw text content for the file download
+                const text = await response.text();
                 
-                if (json && json.data) {
-                    setEncryptedData(json.data);
+                if (text) {
+                    setEncryptedData(text);
                 } else {
-                    throw new Error('Invalid data format');
+                    throw new Error('Empty response');
                 }
 
             } catch (error) {

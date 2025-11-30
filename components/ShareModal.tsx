@@ -51,59 +51,58 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     try {
       const jsonString = JSON.stringify(data);
       
-      // Check data size rough estimation (UTF-16 char codes are 2 bytes, but here we treat as 1 for base estimation)
-      if (jsonString.length > 5 * 1024 * 1024) {
-          throw new Error('მონაცემები ძალიან დიდია. გთხოვთ წაშალოთ ზოგიერთი სურათი.');
-      }
-
       // 1. Compress the data
       const compressed = pako.deflate(jsonString);
-      // 2. Convert compressed binary data to Base64 to safely encrypt it as a string
+      // 2. Convert compressed binary data to Base64
       const compressedBase64 = bufferToBase64(compressed.buffer);
+      
+      // Check size. Vercel serverless functions have a 4.5MB body limit.
+      // We check compressed size. 4MB is a safe buffer.
+      if (compressedBase64.length > 4 * 1024 * 1024) {
+         throw new Error('მონაცემები ძალიან დიდია (4.5MB-ზე მეტი). გთხოვთ წაშალოთ ზოგიერთი სურათი.');
+      }
+
       // 3. Encrypt the compressed data
       const encryptedData = await encryptData(compressedBase64, password);
       
-      // JSONBlob expects JSON data. We wrap our encrypted string.
-      const payload = {
-          data: encryptedData
-      };
+      // Prepare FormData for file.io
+      const formData = new FormData();
+      const blob = new Blob([encryptedData], { type: 'text/plain' });
+      formData.append('file', blob, 'tree.data');
+      formData.append('expires', '2w'); // Keep for 2 weeks
+      formData.append('maxDownloads', '1'); // One-time download
 
       // Determine endpoint based on environment
-      // On Vercel, we use the rewrite '/api/jsonblob' which maps to 'https://jsonblob.com/api/jsonBlob'
-      // On Localhost, Vercel rewrites don't work by default (unless using `vercel dev`), so we fallback to corsproxy
+      // On Vercel, use the rewrite '/api/share' which maps to 'https://file.io'
       const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const endpoint = isLocal 
-        ? 'https://corsproxy.io/?https://jsonblob.com/api/jsonBlob' 
-        : '/api/jsonblob';
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      
+      let response;
+      
+      if (isLocal) {
+          // Fallback for localhost (Vercel rewrites don't work without `vercel dev`)
+          response = await fetch('https://corsproxy.io/?https://file.io', {
+              method: 'POST',
+              body: formData,
+          });
+      } else {
+          // Production Vercel Rewrite
+          response = await fetch('/api/share', {
+              method: 'POST',
+              body: formData,
+          });
+      }
 
       if (!response.ok) {
           throw new Error(`Upload failed: ${response.statusText}`);
       }
 
-      // JSONBlob returns the location of the new blob in the headers
-      const locationHeader = response.headers.get('Location') || response.headers.get('x-jsonblob');
+      const result = await response.json();
       
-      if (!locationHeader) {
-          throw new Error('Failed to retrieve Blob ID from server.');
+      if (!result.success || !result.key) {
+          throw new Error('Failed to get file key from server.');
       }
 
-      // Extract ID from the URL (it's the last part of the path)
-      const blobId = locationHeader.split('/').pop();
-
-      if (!blobId) {
-          throw new Error('Invalid Blob ID.');
-      }
-
-      const url = `${window.location.origin}${window.location.pathname}?blobId=${blobId}`;
+      const url = `${window.location.origin}${window.location.pathname}?fileKey=${result.key}`;
       setShareUrl(url);
     } catch (e: any) {
       console.error("Link generation failed", e);
@@ -132,6 +131,12 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
         </header>
         <p className="text-gray-600 dark:text-gray-400 mb-4">შექმენით დაშიფრული ბმული და პაროლი, რომ გაუზიაროთ თქვენი გენეალოგიური ხე სხვებს.</p>
         
+        <div className="p-3 mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>ყურადღება:</strong> ეს ბმული არის <strong>ერთჯერადი</strong>. მიმღების მიერ გახსნისთანავე ფაილი წაიშლება სერვერიდან.
+            </p>
+        </div>
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1. პაროლის შექმნა</label>
@@ -144,7 +149,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">2. ბმულის გენერირება</label>
             <button onClick={handleGenerateLink} disabled={isLoading || !password} className="w-full px-4 py-2 rounded-md bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 dark:disabled:bg-purple-800 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-white">
-                {isLoading ? 'გენერირება...' : <><ShareIcon className="w-5 h-5"/> ბმულის შექმნა</>}
+                {isLoading ? 'იტვირთება...' : <><ShareIcon className="w-5 h-5"/> ბმულის შექმნა</>}
             </button>
             {error && <p className="text-red-500 dark:text-red-400 text-sm mt-2">{error}</p>}
           </div>
