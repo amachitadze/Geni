@@ -305,9 +305,9 @@ function App() {
   // Check for shared data in URL on initial mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const binIdParam = urlParams.get('id'); // Use 'id' parameter as per snippet
-    if (binIdParam) {
-      setBinId(binIdParam);
+    const blobIdParam = urlParams.get('blobId'); // Changed from 'id' to 'blobId' to distinguish
+    if (blobIdParam) {
+      setBinId(blobIdParam);
       setIsPasswordPromptOpen(true);
       setIsViewingTree(true);
     }
@@ -796,34 +796,23 @@ function App() {
     setIsDecrypting(true);
     setDecryptionError(null);
     try {
-      // Prioritize environment variables, but use hardcoded fallback as a last resort per user request to bypass Vercel env issues
-      const apiKey = process.env.JSONBIN_API_KEY || 
-                     process.env.REACT_APP_JSONBIN_API_KEY || 
-                     process.env.VITE_JSONBIN_API_KEY || 
-                     '$2a$10$venH21uTMXyIkjQ9J3XBJO6MOxkWzuWWI9J5wV8uDAg/ZWlc.KCNK';
-                     
-      if (!apiKey) {
-          throw new Error('API Key is not configured.');
-      }
-
-      // Use jsonbin.io V3 API structure as requested
-      const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      // Use jsonblob.com which supports large files and doesn't require an API key
+      const response = await fetch(`https://jsonblob.com/api/jsonBlob/${binId}`, {
           method: 'GET',
           headers: {
-              'X-Master-Key': apiKey
+              'Accept': 'application/json'
           }
       });
       
       if (!response.ok) {
-          throw new Error('Failed to fetch data from storage service.');
+          throw new Error('მონაცემების წამოღება ვერ მოხერხდა.');
       }
       
       const data = await response.json();
-      // JSONBin V3 returns data in 'record' field
-      const encryptedData = data.record?.encryptedData;
+      const encryptedData = data.encryptedData;
       
       if (!encryptedData) {
-          throw new Error('Storage bin is empty or malformed.');
+          throw new Error('მონაცემები ცარიელია ან დაზიანებული.');
       }
 
       const decryptedCompressedBase64 = await decryptData(encryptedData, password);

@@ -49,45 +49,39 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     setIsLoading(true);
     setError('');
     try {
-      // Prioritize environment variables, but use hardcoded fallback as a last resort per user request to bypass Vercel env issues
-      const apiKey = process.env.JSONBIN_API_KEY || 
-                     process.env.REACT_APP_JSONBIN_API_KEY || 
-                     process.env.VITE_JSONBIN_API_KEY || 
-                     '$2a$10$venH21uTMXyIkjQ9J3XBJO6MOxkWzuWWI9J5wV8uDAg/ZWlc.KCNK';
-      
-      if (!apiKey) {
-          throw new Error('API Key is not configured. Please add JSONBIN_API_KEY (or REACT_APP_JSONBIN_API_KEY) to your environment variables.');
-      }
-
       const jsonString = JSON.stringify(data);
       const compressed = pako.deflate(jsonString);
       const compressedBase64 = bufferToBase64(compressed.buffer);
+      
+      // Check size before upload (jsonblob limit is 1MB free)
+      if (compressedBase64.length > 1024 * 1024) {
+           throw new Error('მონაცემების ზომა აღემატება 1MB-ს (უფასო ლიმიტი). გთხოვთ, შეამციროთ სურათების რაოდენობა ან ზომა.');
+      }
+
       const encryptedData = await encryptData(compressedBase64, password);
       
-      // Use jsonbin.io V3 API structure as requested
-      const response = await fetch('https://api.jsonbin.io/v3/b', {
+      // Upload to jsonblob.com (No API Key needed, supports CORS, 1MB limit)
+      const response = await fetch('https://jsonblob.com/api/jsonBlob', {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
-              'X-Master-Key': apiKey,
-              'X-Bin-Private': 'false' // Explicitly set to false (string) to make it public but encrypted
+              'Accept': 'application/json'
           },
           body: JSON.stringify({ encryptedData })
       });
 
       if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`Failed to upload data (Status: ${response.status}). ${errorData.message || ''}`);
+          throw new Error(`ატვირთვა ვერ მოხერხდა (სტატუსი: ${response.status})`);
       }
 
-      const result = await response.json();
-      const binId = result.metadata?.id;
-
-      if (!binId) {
-          throw new Error('Failed to retrieve Bin ID from service response.');
+      // Get the ID from the Location header
+      const location = response.headers.get('Location');
+      if (!location) {
+          throw new Error('სერვერმა არ დააბრუნა მონაცემების მისამართი.');
       }
-
-      const url = `${window.location.origin}${window.location.pathname}?id=${binId}`;
+      
+      const blobId = location.split('/').pop();
+      const url = `${window.location.origin}${window.location.pathname}?blobId=${blobId}`;
       setShareUrl(url);
 
     } catch (e: any) {
