@@ -49,9 +49,11 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     setIsLoading(true);
     setError('');
     try {
-      const apiKey = process.env.JSONBIN_API_KEY;
+      // Try to find the key in any of the standard environment variable locations
+      const apiKey = process.env.JSONBIN_API_KEY || process.env.REACT_APP_JSONBIN_API_KEY || process.env.VITE_JSONBIN_API_KEY;
+      
       if (!apiKey) {
-          throw new Error('API Key is not configured in Vercel environment variables.');
+          throw new Error('API Key is not configured. Please add JSONBIN_API_KEY (or REACT_APP_JSONBIN_API_KEY) to your environment variables.');
       }
 
       const jsonString = JSON.stringify(data);
@@ -65,13 +67,14 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
           headers: {
               'Content-Type': 'application/json',
               'X-Master-Key': apiKey,
-              'X-Bin-Private': 'false' // As requested, create a public bin so it can be read easily
+              'X-Bin-Private': 'false' // Explicitly set to false (string) to make it public but encrypted
           },
           body: JSON.stringify({ encryptedData })
       });
 
       if (!response.ok) {
-          throw new Error('Failed to upload data to storage service.');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`Failed to upload data (Status: ${response.status}). ${errorData.message || ''}`);
       }
 
       const result = await response.json();
@@ -81,7 +84,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
           throw new Error('Failed to retrieve Bin ID from service response.');
       }
 
-      const url = `${window.location.origin}${window.location.pathname}?binId=${binId}`;
+      const url = `${window.location.origin}${window.location.pathname}?id=${binId}`;
       setShareUrl(url);
 
     } catch (e: any) {

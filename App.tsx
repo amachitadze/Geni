@@ -305,7 +305,7 @@ function App() {
   // Check for shared data in URL on initial mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const binIdParam = urlParams.get('binId');
+    const binIdParam = urlParams.get('id'); // Use 'id' parameter as per snippet
     if (binIdParam) {
       setBinId(binIdParam);
       setIsPasswordPromptOpen(true);
@@ -796,7 +796,7 @@ function App() {
     setIsDecrypting(true);
     setDecryptionError(null);
     try {
-      const apiKey = process.env.JSONBIN_API_KEY;
+      const apiKey = process.env.JSONBIN_API_KEY || process.env.REACT_APP_JSONBIN_API_KEY || process.env.VITE_JSONBIN_API_KEY;
       if (!apiKey) {
           throw new Error('API Key is not configured in Vercel environment variables.');
       }
