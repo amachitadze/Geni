@@ -1,6 +1,17 @@
 // Helper to convert ArrayBuffer to Base64
 export function bufferToBase64(buffer: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const len = bytes.byteLength;
+  const chunkSize = 0x8000; // 32768
+  
+  for (let i = 0; i < len; i += chunkSize) {
+    // Process in chunks to avoid "Maximum call stack size exceeded"
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, len));
+    // @ts-ignore
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  return btoa(binary);
 }
 
 // Helper to convert Base64 to ArrayBuffer

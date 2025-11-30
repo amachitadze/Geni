@@ -313,7 +313,9 @@ function App() {
         
         const fetchFile = async () => {
             try {
-                const response = await fetch(`https://file.io/${fileKey}`);
+                // Use CORS Proxy to bypass potential network/CORS blocks
+                const response = await fetch(`https://corsproxy.io/?https://file.io/${fileKey}`);
+                
                 if (response.status === 404) {
                     setDecryptionError("ბმული ვადაგასულია ან უკვე გამოყენებულია. ეს ბმული მხოლოდ ერთხელ მუშაობს.");
                     setIsPasswordPromptOpen(true);

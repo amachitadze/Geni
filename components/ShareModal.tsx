@@ -57,13 +57,13 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
       // 3. Encrypt the compressed data
       const encryptedData = await encryptData(compressedBase64, password);
       
-      // Upload to file.io
+      // Upload to file.io via CORS Proxy
       const formData = new FormData();
       const blob = new Blob([encryptedData], { type: 'text/plain' });
       formData.append('file', blob, 'tree.enc');
 
-      // The free plan of file.io auto-deletes after 1 download or 14 days (whichever comes first).
-      const response = await fetch('https://file.io', {
+      // Use corsproxy.io to route the request to file.io, bypassing local CORS restrictions
+      const response = await fetch('https://corsproxy.io/?https://file.io', {
         method: 'POST',
         body: formData,
       });
