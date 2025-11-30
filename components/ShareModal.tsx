@@ -48,45 +48,25 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     }
     setIsLoading(true);
     setError('');
-    setShareUrl(''); // Reset previous URL
-
     try {
       const jsonString = JSON.stringify(data);
+      // 1. Compress the data
       const compressed = pako.deflate(jsonString);
+      // 2. Convert compressed binary data to Base64 to safely encrypt it as a string
       const compressedBase64 = bufferToBase64(compressed.buffer);
+      // 3. Encrypt the compressed data
       const encryptedData = await encryptData(compressedBase64, password);
-
-      // Upload encrypted data to npoint.io
-      const response = await fetch('https://api.npoint.io/bins', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ encryptedData }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`სერვერთან დაკავშირების შეცდომა: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      if (!result.id) {
-        throw new Error('ვერ მოხერხდა უნიკალური ID-ის მიღება.');
-      }
       
-      const blobId = result.id;
-
-      const url = `${window.location.origin}${window.location.pathname}?blobId=${blobId}`;
+      const encodedData = encodeURIComponent(encryptedData);
+      const url = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
       setShareUrl(url);
-
-    } catch (e: any) {
-      console.error("Link generation failed", e);
-      setError(e.message || 'ბმულის გენერაცია ვერ მოხერხდა. გთხოვთ, სცადოთ მოგვიანებით.');
+    } catch (e) {
+      console.error("Encryption/Compression failed", e);
+      setError('ბმულის გენერაცია ვერ მოხერხდა. შესაძლოა, ხე ძალიან დიდია.');
     } finally {
       setIsLoading(false);
     }
   };
-
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).catch(err => {
