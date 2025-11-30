@@ -57,12 +57,31 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
       // 3. Encrypt the compressed data
       const encryptedData = await encryptData(compressedBase64, password);
       
-      const encodedData = encodeURIComponent(encryptedData);
-      const url = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
+      // Upload to file.io
+      const formData = new FormData();
+      const blob = new Blob([encryptedData], { type: 'text/plain' });
+      formData.append('file', blob, 'tree.enc');
+
+      // The free plan of file.io auto-deletes after 1 download or 14 days (whichever comes first).
+      const response = await fetch('https://file.io', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+          throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      if (!result.success || !result.key) {
+          throw new Error('Invalid response from server');
+      }
+
+      const url = `${window.location.origin}${window.location.pathname}?fileKey=${result.key}`;
       setShareUrl(url);
     } catch (e) {
-      console.error("Encryption/Compression failed", e);
-      setError('ბმულის გენერაცია ვერ მოხერხდა. შესაძლოა, ხე ძალიან დიდია.');
+      console.error("Link generation failed", e);
+      setError('ბმულის გენერაცია ვერ მოხერხდა. შეამოწმეთ ინტერნეტ კავშირი.');
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +104,12 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </header>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">შექმენით დაშიფრული ბმული და პაროლი, რომ გაუზიაროთ თქვენი გენეალოგიური ხე სხვებს. მონაცემები დაცულია და მხოლოდ პაროლის მქონე პირს შეუძლია მისი ნახვა.</p>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">შექმენით დაშიფრული ბმული და პაროლი, რომ გაუზიაროთ თქვენი გენეალოგიური ხე სხვებს.</p>
+        <div className="bg-yellow-50 dark:bg-yellow-900/30 p-3 rounded-md border border-yellow-200 dark:border-yellow-700 mb-4">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>ყურადღება:</strong> ეს ბმული არის <strong>ერთჯერადი</strong>. მიმღების მიერ გახსნისთანავე ფაილი წაიშლება სერვერიდან.
+            </p>
+        </div>
         
         <div className="space-y-4">
           <div>

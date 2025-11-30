@@ -88,7 +88,7 @@ const MoonIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 const ViewCompactIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
     </svg>
 );
 const ViewNormalIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -305,11 +305,44 @@ function App() {
   // Check for shared data in URL on initial mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+    // Support previous versions sharing method if needed, or just new one
     const data = urlParams.get('data');
+    const fileKey = urlParams.get('fileKey'); // Check for file.io key
+
     if (data) {
       setEncryptedData(decodeURIComponent(data));
       setIsPasswordPromptOpen(true);
       setIsViewingTree(true);
+    } else if (fileKey) {
+        // Fetch from file.io
+        setIsViewingTree(true);
+        setIsPasswordPromptOpen(true);
+        // We will fetch the data in handlePasswordSubmit or before?
+        // Better to fetch before password prompt to ensure link is valid, 
+        // BUT for large files, we might want to wait. 
+        // Let's just set a flag or start fetching. 
+        // Actually, to decrypt we need the data.
+        
+        const fetchFile = async () => {
+            try {
+                const response = await fetch(`https://file.io/${fileKey}`);
+                if (response.status === 404) {
+                    setDecryptionError("ბმული ვადაგასულია ან უკვე გამოყენებულია. ეს ბმული მხოლოდ ერთხელ მუშაობს.");
+                    setIsPasswordPromptOpen(true); // Open to show error
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const text = await response.text();
+                setEncryptedData(text);
+            } catch (error) {
+                console.error("Failed to fetch shared data:", error);
+                setDecryptionError("მონაცემების ჩამოტვირთვა ვერ მოხერხდა. შეამოწმეთ ინტერნეტ კავშირი.");
+                setIsPasswordPromptOpen(true);
+            }
+        };
+        fetchFile();
     }
   }, []);
 
