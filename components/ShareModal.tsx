@@ -49,16 +49,23 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     setIsLoading(true);
     setError('');
     try {
+      const apiKey = process.env.JSONBIN_API_KEY;
+      if (!apiKey) {
+          throw new Error('API Key is not configured in Vercel environment variables.');
+      }
+
       const jsonString = JSON.stringify(data);
       const compressed = pako.deflate(jsonString);
       const compressedBase64 = bufferToBase64(compressed.buffer);
       const encryptedData = await encryptData(compressedBase64, password);
       
-      // Use npoint.io instead of jsonbin.io
-      const response = await fetch('https://api.npoint.io/', {
+      // Use jsonbin.io V3 API structure as requested
+      const response = await fetch('https://api.jsonbin.io/v3/b', {
           method: 'POST',
           headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'X-Master-Key': apiKey,
+              'X-Bin-Private': 'false' // As requested, create a public bin so it can be read easily
           },
           body: JSON.stringify({ encryptedData })
       });
@@ -68,14 +75,18 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
       }
 
       const result = await response.json();
-      const binId = result.id; // npoint returns { "id": "..." }
+      const binId = result.metadata?.id;
+
+      if (!binId) {
+          throw new Error('Failed to retrieve Bin ID from service response.');
+      }
 
       const url = `${window.location.origin}${window.location.pathname}?binId=${binId}`;
       setShareUrl(url);
 
     } catch (e: any) {
       console.error("Link generation failed", e);
-      setError('ბმულის გენერაცია ვერ მოხერხდა. შეამოწმეთ ინტერნეტ კავშირი.');
+      setError('ბმულის გენერაცია ვერ მოხერხდა. ' + (e.message || 'შეამოწმეთ ინტერნეტ კავშირი.'));
     } finally {
       setIsLoading(false);
     }

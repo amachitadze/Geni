@@ -88,7 +88,7 @@ const MoonIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 const ViewCompactIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
     </svg>
 );
 const ViewNormalIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -796,15 +796,26 @@ function App() {
     setIsDecrypting(true);
     setDecryptionError(null);
     try {
-      // Use npoint.io instead of jsonbin.io
-      const response = await fetch(`https://api.npoint.io/${binId}`);
+      const apiKey = process.env.JSONBIN_API_KEY;
+      if (!apiKey) {
+          throw new Error('API Key is not configured in Vercel environment variables.');
+      }
+
+      // Use jsonbin.io V3 API structure as requested
+      const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+          method: 'GET',
+          headers: {
+              'X-Master-Key': apiKey
+          }
+      });
       
       if (!response.ok) {
           throw new Error('Failed to fetch data from storage service.');
       }
       
-      const binData = await response.json();
-      const encryptedData = binData.encryptedData;
+      const data = await response.json();
+      // JSONBin V3 returns data in 'record' field
+      const encryptedData = data.record?.encryptedData;
       
       if (!encryptedData) {
           throw new Error('Storage bin is empty or malformed.');
