@@ -305,40 +305,37 @@ function App() {
   // Check for shared data in URL on initial mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    // Support previous versions sharing method if needed, or just new one
-    const data = urlParams.get('data');
-    const fileKey = urlParams.get('fileKey'); // Check for file.io key
+    const fileKey = urlParams.get('fileKey');
 
-    if (data) {
-      setEncryptedData(decodeURIComponent(data));
-      setIsPasswordPromptOpen(true);
-      setIsViewingTree(true);
-    } else if (fileKey) {
-        // Fetch from file.io
+    if (fileKey) {
         setIsViewingTree(true);
         setIsPasswordPromptOpen(true);
-        // We will fetch the data in handlePasswordSubmit or before?
-        // Better to fetch before password prompt to ensure link is valid, 
-        // BUT for large files, we might want to wait. 
-        // Let's just set a flag or start fetching. 
-        // Actually, to decrypt we need the data.
         
         const fetchFile = async () => {
             try {
                 const response = await fetch(`https://file.io/${fileKey}`);
                 if (response.status === 404) {
                     setDecryptionError("ბმული ვადაგასულია ან უკვე გამოყენებულია. ეს ბმული მხოლოდ ერთხელ მუშაობს.");
-                    setIsPasswordPromptOpen(true); // Open to show error
+                    setIsPasswordPromptOpen(true);
                     return;
                 }
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
                 const text = await response.text();
+                // Check if the response is actually a file.io error JSON (sometimes happens)
+                try {
+                    const json = JSON.parse(text);
+                    if (json && json.success === false) {
+                         throw new Error(json.message || 'File not found');
+                    }
+                } catch (e) {
+                    // It's likely the encrypted string, which is not JSON
+                }
                 setEncryptedData(text);
             } catch (error) {
                 console.error("Failed to fetch shared data:", error);
-                setDecryptionError("მონაცემების ჩამოტვირთვა ვერ მოხერხდა. შეამოწმეთ ინტერნეტ კავშირი.");
+                setDecryptionError("მონაცემების ჩამოტვირთვა ვერ მოხერხდა. ბმული სავარაუდოდ ვადაგასულია.");
                 setIsPasswordPromptOpen(true);
             }
         };
