@@ -254,7 +254,7 @@ function App() {
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isPasswordPromptOpen, setIsPasswordPromptOpen] = useState(false);
-  const [encryptedData, setEncryptedData] = useState<string | null>(null);
+  const [binId, setBinId] = useState<string | null>(null);
   const [decryptionError, setDecryptionError] = useState<string | null>(null);
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -305,9 +305,9 @@ function App() {
   // Check for shared data in URL on initial mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const data = urlParams.get('data');
-    if (data) {
-      setEncryptedData(decodeURIComponent(data));
+    const binIdParam = urlParams.get('binId');
+    if (binIdParam) {
+      setBinId(binIdParam);
       setIsPasswordPromptOpen(true);
       setIsViewingTree(true);
     }
@@ -792,10 +792,33 @@ function App() {
   };
 
   const handlePasswordSubmit = async (password: string) => {
-    if (!encryptedData) return;
+    if (!binId) return;
     setIsDecrypting(true);
     setDecryptionError(null);
     try {
+      if (!process.env.JSONBIN_API_KEY) {
+        throw new Error('API key for storage service is not configured.');
+      }
+      
+      const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+        headers: {
+          'X-Master-Key': process.env.JSONBIN_API_KEY
+        }
+      });
+      
+      if (!response.ok) {
+          const errorData = await response.json();
+          console.error("JSONBin fetch error:", errorData);
+          throw new Error('Failed to fetch data from storage service.');
+      }
+      
+      const binData = await response.json();
+      const encryptedData = binData.record.encryptedData;
+      
+      if (!encryptedData) {
+          throw new Error('Storage bin is empty or malformed.');
+      }
+
       const decryptedCompressedBase64 = await decryptData(encryptedData, password);
       const compressedBuffer = base64ToBuffer(decryptedCompressedBase64);
       const decompressedString = pako.inflate(compressedBuffer, { to: 'string' });
