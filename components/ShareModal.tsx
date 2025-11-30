@@ -57,18 +57,41 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
       // 3. Encrypt the compressed data
       const encryptedData = await encryptData(compressedBase64, password);
       
-      // Upload to file.io via CORS Proxy
-      const formData = new FormData();
       const blob = new Blob([encryptedData], { type: 'text/plain' });
-      formData.append('file', blob, 'tree.enc');
+      
+      // Upload logic with fallback strategy
+      let response;
+      
+      // Attempt 1: Direct Upload
+      try {
+          const formDataDirect = new FormData();
+          formDataDirect.append('file', blob, 'tree.enc');
+          
+          response = await fetch('https://file.io', {
+            method: 'POST',
+            body: formDataDirect,
+          });
+      } catch (directError) {
+          console.warn("Direct upload failed, trying proxy...", directError);
+      }
 
-      // Use corsproxy.io to route the request to file.io, bypassing local CORS restrictions
-      const response = await fetch('https://corsproxy.io/?https://file.io', {
-        method: 'POST',
-        body: formData,
-      });
+      // Attempt 2: Proxy Upload (only if direct failed or threw error)
+      if (!response || !response.ok) {
+          try {
+              const formDataProxy = new FormData();
+              formDataProxy.append('file', blob, 'tree.enc');
+              
+              response = await fetch('https://corsproxy.io/?https://file.io', {
+                method: 'POST',
+                body: formDataProxy,
+              });
+          } catch (proxyError) {
+              console.error("Proxy upload also failed", proxyError);
+              throw new Error('All upload attempts failed');
+          }
+      }
 
-      if (!response.ok) {
+      if (!response || !response.ok) {
           throw new Error('Upload failed');
       }
 

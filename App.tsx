@@ -312,18 +312,31 @@ function App() {
         setIsPasswordPromptOpen(true);
         
         const fetchFile = async () => {
+            let response;
             try {
-                // Use CORS Proxy to bypass potential network/CORS blocks
-                const response = await fetch(`https://corsproxy.io/?https://file.io/${fileKey}`);
+                // Attempt 1: Direct fetch
+                try {
+                    response = await fetch(`https://file.io/${fileKey}`);
+                } catch (directError) {
+                    console.warn("Direct download failed, switching to proxy...", directError);
+                    // Attempt 2: Proxy fetch
+                    response = await fetch(`https://corsproxy.io/?https://file.io/${fileKey}`);
+                }
+
+                if (!response) {
+                    throw new Error("Network request failed");
+                }
                 
                 if (response.status === 404) {
                     setDecryptionError("ბმული ვადაგასულია ან უკვე გამოყენებულია. ეს ბმული მხოლოდ ერთხელ მუშაობს.");
                     setIsPasswordPromptOpen(true);
                     return;
                 }
+                
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
+                
                 const text = await response.text();
                 // Check if the response is actually a file.io error JSON (sometimes happens)
                 try {
@@ -337,7 +350,7 @@ function App() {
                 setEncryptedData(text);
             } catch (error) {
                 console.error("Failed to fetch shared data:", error);
-                setDecryptionError("მონაცემების ჩამოტვირთვა ვერ მოხერხდა. ბმული სავარაუდოდ ვადაგასულია.");
+                setDecryptionError("მონაცემების ჩამოტვირთვა ვერ მოხერხდა. ბმული სავარაუდოდ ვადაგასულია ან ინტერნეტის პრობლემაა.");
                 setIsPasswordPromptOpen(true);
             }
         };
@@ -989,10 +1002,13 @@ function App() {
     setGoogleSearchSources([]);
 
     try {
-      if (!process.env.API_KEY) {
+      // Safely access process.env to prevent ReferenceError in browser
+      const apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : undefined;
+      
+      if (!apiKey) {
         throw new Error("API key is not configured.");
       }
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
 
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
