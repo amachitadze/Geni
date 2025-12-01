@@ -29,7 +29,9 @@ const ListItem: React.FC<{
     isHighlighted: boolean, 
     isSpouse?: boolean 
 }> = ({ person, onNavigate, onShowDetails, isHighlighted, isSpouse }) => {
-    const hasChildren = person.children && person.children.length > 0;
+    // Show navigation arrow if person has children OR has a spouse.
+    // This allows navigating to a childless couple to see the spouse.
+    const showNavigation = (person.children && person.children.length > 0) || person.spouseId;
     
     const isDeceased = !!person.deathDate;
     
@@ -83,7 +85,7 @@ const ListItem: React.FC<{
                 </div>
 
                 {/* Navigation Area */}
-                {hasChildren && (
+                {showNavigation && (
                     <button 
                         onClick={handleNavigateClick} 
                         className="group flex-shrink-0 flex items-center justify-center px-4 relative hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"

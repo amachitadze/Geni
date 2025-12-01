@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Gender, ModalContext, Person, Relationship } from '../types';
 
@@ -107,6 +106,7 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
   const [isUploading, setIsUploading] = useState(false);
   const [manualApiKey, setManualApiKey] = useState('');
   const [hasValidApiKey, setHasValidApiKey] = useState(false);
+  const [useCloudStorage, setUseCloudStorage] = useState(true); // Default to true if key exists
 
   const isEditMode = context?.action === 'edit';
 
@@ -115,20 +115,23 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
       const envKey = typeof process !== 'undefined' && process.env ? process.env.REACT_APP_IMGBB_API_KEY : '';
       const localKey = localStorage.getItem('imgbb_api_key');
       
-      if (envKey) {
+      if (envKey || localKey) {
           setHasValidApiKey(true);
-      } else if (localKey) {
-          setManualApiKey(localKey);
-          setHasValidApiKey(true);
+          setUseCloudStorage(true);
       } else {
           setHasValidApiKey(false);
+          setUseCloudStorage(false);
       }
+      
+      if(localKey) setManualApiKey(localKey);
+
   }, []);
 
   const handleManualKeySave = () => {
       if (manualApiKey.trim()) {
           localStorage.setItem('imgbb_api_key', manualApiKey.trim());
           setHasValidApiKey(true);
+          setUseCloudStorage(true);
           alert("API გასაღები შენახულია.");
       }
   };
@@ -226,7 +229,8 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
       const envKey = typeof process !== 'undefined' && process.env ? process.env.REACT_APP_IMGBB_API_KEY : undefined;
       const apiKey = envKey || localStorage.getItem('imgbb_api_key');
 
-      if (apiKey) {
+      // Check if user has opted for cloud storage AND has a key
+      if (apiKey && useCloudStorage) {
         // --- ImgBB Logic ---
         setIsUploading(true);
         const formData = new FormData();
@@ -256,7 +260,7 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
             }
         } catch (error) {
             console.error("ImgBB upload failed:", error);
-            alert("სურათის სერვერზე ატვირთვა ვერ მოხერხდა. გამოყენებული იქნება ლოკალური შენახვა (Base64). შეამოწმეთ API Key.");
+            alert("სურათის სერვერზე ატვირთვა ვერ მოხერხდა. გამოყენებული იქნება ლოკალური შენახვა (Base64).");
             
             // Fallback: Convert to Base64 (Local Storage) if API fails
             const reader = new FileReader();
@@ -266,7 +270,7 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
             setIsUploading(false);
         }
       } else {
-        // --- Default Logic (No API Key) ---
+        // --- Default Logic (No API Key OR Cloud Storage Disabled) ---
         // Convert to Base64 (Store inside JSON)
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -461,11 +465,26 @@ const AddPersonModal: React.FC<AddPersonModalProps> = ({ isOpen, onClose, onSubm
                         )}
                     </div>
                     
-                    {/* ImgBB Status & Manual Key Input */}
+                    {/* ImgBB Status & Manual Key Input & Toggle */}
                     <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700/30 rounded border border-gray-200 dark:border-gray-700">
-                        <p className={`text-xs ${hasValidApiKey ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`}>
+                        {hasValidApiKey ? (
+                            <div className="flex items-center gap-2 mb-1">
+                                <input 
+                                    type="checkbox" 
+                                    id="cloudToggle" 
+                                    checked={useCloudStorage} 
+                                    onChange={(e) => setUseCloudStorage(e.target.checked)}
+                                    className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label htmlFor="cloudToggle" className="text-xs font-medium text-gray-700 dark:text-gray-300 select-none cursor-pointer">
+                                    სურათის სერვერზე (ImgBB) ატვირთვა
+                                </label>
+                            </div>
+                        ) : null}
+
+                        <p className={`text-xs ${hasValidApiKey && useCloudStorage ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`}>
                             {hasValidApiKey 
-                                ? "✅ ImgBB API აქტიურია. სურათი აიტვირთება სერვერზე." 
+                                ? (useCloudStorage ? "✅ ImgBB API აქტიურია. სურათი აიტვირთება სერვერზე." : "ℹ️ ატვირთვა გამორთულია. სურათი შეინახება ფაილში (ლოკალურად).")
                                 : "⚠️ ImgBB API არ არის ნაპოვნი. სურათი შეინახება ფაილში (გაზრდის ზომას)."}
                         </p>
                         
