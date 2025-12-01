@@ -15,204 +15,19 @@ import ExportModal from './components/ExportModal';
 import LandingPage from './components/LandingPage';
 import InitialView from './components/InitialView';
 import { decryptData, base64ToBuffer } from './utils/crypto';
+import { calculateAge, formatTimestamp } from './utils/dateUtils';
+import { validatePeopleData, getFamilyUnitFromConnection } from './utils/treeUtils';
+import { 
+    SearchIcon, BackIcon, HomeIcon, MenuIcon, ExportIcon, 
+    CenterIcon, StatsIcon, CloseIcon, ShareIcon, JsonExportIcon, 
+    JsonImportIcon, SunIcon, MoonIcon, ViewCompactIcon, ViewNormalIcon, 
+    ListBulletIcon, GlobeIcon, DocumentTextIcon 
+} from './components/Icons';
 
 // Allow TypeScript to recognize the libraries loaded from CDN
 declare const html2canvas: any;
 declare const jspdf: any;
 declare const pako: any;
-
-const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
-);
-const BackIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-    </svg>
-);
-const HomeIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-    </svg>
-);
-const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-    </svg>
-);
-const ExportIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15M9 12l3 3m0 0l3-3m-3 3V2.25" />
-    </svg>
-);
-const CenterIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
-    </svg>
-);
-const StatsIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
-    </svg>
-);
-const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-    </svg>
-);
-const ShareIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.186 2.25 2.25 0 00-3.933 2.186z" />
-    </svg>
-);
-const JsonExportIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-    </svg>
-);
-const JsonImportIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-    </svg>
-);
-const SunIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-    </svg>
-);
-const MoonIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
-    </svg>
-);
-const ViewCompactIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-        <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-        <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
-        <g id="SVGRepo_iconCarrier">
-            <path fillRule="evenodd" clipRule="evenodd" d="M8 1C9.65685 1 11 2.34315 11 4V8C11 9.65685 9.65685 11 8 11H4C2.34315 11 1 9.65685 1 8V4C1 2.34315 2.34315 1 4 1H8ZM8 3C8.55228 3 9 3.44772 9 4V8C9 8.55228 8.55228 9 8 9H4C3.44772 9 3 8.55228 3 8V4C3 3.44772 3.44772 3 4 3H8Z" fill="currentColor"></path>
-            <path fillRule="evenodd" clipRule="evenodd" d="M8 13C9.65685 13 11 14.3431 11 16V20C11 21.6569 9.65685 23 8 23H4C2.34315 23 1 21.6569 1 20V16C1 14.3431 2.34315 13 4 13H8ZM8 15C8.55228 15 9 15.4477 9 16V20C9 20.5523 8.55228 21 8 21H4C3.44772 21 3 20.5523 3 20V16C3 15.4477 3.44772 15 4 15H8Z" fill="currentColor"></path>
-            <path fillRule="evenodd" clipRule="evenodd" d="M23 4C23 2.34315 21.6569 1 20 1H16C14.3431 1 13 2.34315 13 4V8C13 9.65685 14.3431 11 16 11H20C21.6569 11 23 9.65685 23 8V4ZM21 4C21 3.44772 20.5523 3 20 3H16C15.4477 3 15 3.44772 15 4V8C15 8.55228 15.4477 9 16 9H20C20.5523 9 21 8.55228 21 8V4Z" fill="currentColor"></path>
-            <path fillRule="evenodd" clipRule="evenodd" d="M20 13C21.6569 13 23 14.3431 23 16V20C23 21.6569 21.6569 23 20 23H16C14.3431 23 13 21.6569 13 20V16C13 14.3431 14.3431 13 16 13H20ZM20 15C20.5523 15 21 15.4477 21 16V20C21 20.5523 20.5523 21 20 21H16C15.4477 21 15 20.5523 15 20V16C15 15.4477 15.4477 15 16 15H20Z" fill="currentColor"></path>
-        </g>
-    </svg>
-);
-const ViewNormalIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-        <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-        <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
-        <g id="SVGRepo_iconCarrier">
-            <path fillRule="evenodd" clipRule="evenodd" d="M23 4C23 2.34315 21.6569 1 20 1H4C2.34315 1 1 2.34315 1 4V8C1 9.65685 2.34315 11 4 11H20C21.6569 11 23 9.65685 23 8V4ZM21 4C21 3.44772 20.5523 3 20 3H4C3.44772 3 3 3.44772 3 4V8C3 8.55228 3.44772 9 4 9H20C20.5523 9 21 8.55228 21 8V4Z" fill="currentColor"></path>
-            <path fillRule="evenodd" clipRule="evenodd" d="M23 16C23 14.3431 21.6569 13 20 13H4C2.34315 13 1 14.3431 1 16V20C1 21.6569 2.34315 23 4 23H20C21.6569 23 23 21.6569 23 20V16ZM21 16C21 15.4477 20.5523 15 20 15H4C3.44772 15 3 15.4477 3 16V20C3 20.5523 3.44772 21 4 21H20C20.5523 21 21 20.5523 21 20V16Z" fill="currentColor"></path>
-        </g>
-    </svg>
-);
-const ListBulletIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-        <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-        <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
-        <g id="SVGRepo_iconCarrier">
-            <path fillRule="evenodd" clipRule="evenodd" d="M9 6C9 4.34315 7.65685 3 6 3H4C2.34315 3 1 4.34315 1 6V8C1 9.65685 2.34315 11 4 11H6C7.65685 11 9 9.65685 9 8V6ZM7 6C7 5.44772 6.55228 5 6 5H4C3.44772 5 3 5.44772 3 6V8C3 8.55228 3.44772 9 4 9H6C6.55228 9 7 8.55228 7 8V6Z" fill="currentColor"></path>
-            <path fillRule="evenodd" clipRule="evenodd" d="M9 16C9 14.3431 7.65685 13 6 13H4C2.34315 13 1 14.3431 1 16V18C1 19.6569 2.34315 21 4 21H6C7.65685 21 9 19.6569 9 18V16ZM7 16C7 15.4477 6.55228 15 6 15H4C3.44772 15 3 15.4477 3 16V18C3 18.5523 3.44772 19 4 19H6C6.55228 19 7 18.5523 7 18V16Z" fill="currentColor"></path>
-            <path d="M11 7C11 6.44772 11.4477 6 12 6H22C22.5523 6 23 6.44772 23 7C23 7.55228 22.5523 8 22 8H12C11.4477 8 11 7.55228 11 7Z" fill="currentColor"></path>
-            <path d="M11 17C11 16.4477 11.4477 16 12 16H22C22.5523 16 23 16.4477 23 17C23 17.5523 22.5523 18 22 18H12C11.4477 18 11 17.5523 11 17Z" fill="currentColor"></path>
-        </g>
-    </svg>
-);
-const GlobeIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03-4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
-    </svg>
-);
-const DocumentTextIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-    </svg>
-);
-
-const validatePeopleData = (data: any): { isValid: boolean; error: string | null } => {
-    if (!data || typeof data.people !== 'object' || !Array.isArray(data.rootIdStack)) {
-        return { isValid: false, error: "ფაილს არასწორი სტრუქტურა აქვს." };
-    }
-    const { people, rootIdStack } = data;
-    const allIds = new Set(Object.keys(people));
-    if (rootIdStack.some(id => !allIds.has(id))) {
-        return { isValid: false, error: "ფაილი დაზიანებულია: შეიცავს არასწორ კავშირს საწყის წევთან." };
-    }
-    for (const personId in people) {
-        const person = people[personId];
-        const checkId = (id: string | undefined, type: string) => {
-            if (id && !allIds.has(id)) {
-                return `პიროვნებას (${person.firstName} ${person.lastName}) აქვს არასწორი ${type} ID: ${id}`;
-            }
-            return null;
-        };
-        const checkIdArray = (ids: string[] | undefined, type: string) => {
-            if (ids) {
-                for (const id of ids) {
-                    const err = checkId(id, type);
-                    if (err) return err;
-                }
-            }
-            return null;
-        };
-        const errors = [
-            checkId(person.spouseId, 'მეუღლის'),
-            checkIdArray(person.children, 'შვილის'),
-            checkIdArray(person.parentIds, 'მშობლის'),
-            checkIdArray(person.exSpouseIds, 'ყოფილი მეუღლის'),
-        ].filter(Boolean);
-
-        if (errors.length > 0) {
-            return { isValid: false, error: errors.join('\n') };
-        }
-    }
-    return { isValid: true, error: null };
-};
-
-const getFamilyUnitFromConnection = (id1: string, id2: string, peopleData: People): Set<string> => {
-    const p1 = peopleData[id1];
-    const p2 = peopleData[id2];
-    if (!p1 || !p2) return new Set([id1, id2]);
-
-    let parents: Person[] = [];
-    let children: Person[] = [];
-
-    // Case 1: p1 and p2 are spouses
-    if (p1.spouseId === id2) {
-        parents = [p1, p2];
-        children = p1.children.map(cId => peopleData[cId]).filter(Boolean);
-    } 
-    // Case 2: p1 is a parent of p2
-    else if (p1.children.includes(id2)) {
-        parents.push(p1);
-        if (p1.spouseId && peopleData[p1.spouseId]) {
-            parents.push(peopleData[p1.spouseId]);
-        }
-        children = p1.children.map(cId => peopleData[cId]).filter(Boolean);
-    }
-    // Case 3: p2 is a parent of p1
-    else if (p2.children.includes(id1)) {
-        parents.push(p2);
-        if (p2.spouseId && peopleData[p2.spouseId]) {
-            parents.push(peopleData[p2.spouseId]);
-        }
-        children = p2.children.map(cId => peopleData[cId]).filter(Boolean);
-    }
-
-    const familyIds = new Set<string>();
-    parents.forEach(p => familyIds.add(p.id));
-    children.forEach(c => familyIds.add(c.id));
-
-    // If no family unit found (e.g., siblings, other relationships), just highlight the two connected people
-    if (familyIds.size === 0) {
-        familyIds.add(id1);
-        familyIds.add(id2);
-    }
-    
-    return familyIds;
-};
 
 function App() {
   const [people, setPeople] = useState<People>({});
@@ -795,9 +610,6 @@ function App() {
         });
 
         if (postSubmitAction) {
-            // Use setTimeout to ensure the state update from setPeople is processed
-            // before navigating, which triggers a re-render with the new rootId.
-            // This fixes the issue where newly added siblings wouldn't appear immediately.
             setTimeout(postSubmitAction, 0);
         }
 
@@ -822,7 +634,7 @@ function App() {
 
             return fullName.includes(lowerCaseQuery) ||
                    bio.includes(lowerCaseQuery) ||
-                   phone.includes(query) || // Use original query for phone numbers, etc.
+                   phone.includes(query) ||
                    email.includes(lowerCaseQuery) ||
                    address.includes(lowerCaseQuery);
         });
@@ -832,11 +644,8 @@ function App() {
   const handleSearchResultClick = (personId: string) => {
     navigateTo(personId);
     setHighlightedPersonId(personId);
-    // Keep search open, but clear results
     setSearchQuery('');
     setSearchResults([]);
-    // Do not close search panel automatically, user might want to check the location and then close manually
-    // setIsSearchOpen(false); 
   };
   
   const handleExportPdf = async () => {
@@ -871,7 +680,6 @@ function App() {
       setPeople(sharedPeople);
       setRootIdStack(sharedRootIdStack);
       setIsPasswordPromptOpen(false);
-      // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } catch (error: any) {
       console.error("Decryption failed", error);
@@ -921,7 +729,6 @@ function App() {
       const currentPerson = newPeople[personId];
   
       if (currentPerson) {
-        // Person exists, merge properties. Overwrite with imported data if it's not empty/undefined.
         const mergedPerson = { ...currentPerson };
   
         mergedPerson.firstName = importedPerson.firstName || currentPerson.firstName;
@@ -1025,7 +832,6 @@ function App() {
     setGoogleSearchSources([]);
 
     try {
-      // Safely access process.env to prevent ReferenceError in browser
       const apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : undefined;
       
       if (!apiKey) {
@@ -1068,25 +874,6 @@ function App() {
     handleCloseDetailsModal();
   };
   
-  const formatTimestamp = (isoString: string | null): string => {
-    if (!isoString) return 'უცნობია';
-    try {
-        const date = new Date(isoString);
-        const formattedDate = date.toLocaleDateString('ka-GE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-        });
-        const formattedTime = date.toLocaleTimeString('ka-GE', {
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-        return `${formattedDate} ${formattedTime}`;
-    } catch (error) {
-        return 'არასწორი თარიღი';
-    }
-  };
-
   const handleStartCreating = () => {
     const initialPeople: People = {
       'root': {
@@ -1141,23 +928,12 @@ function App() {
         };
     }
 
-    const getAge = (birthDate?: string, deathDate?: string): number | null => {
-        if (!birthDate) return null;
-        const start = new Date(birthDate);
-        const end = deathDate ? new Date(deathDate) : new Date();
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
-        let age = end.getFullYear() - start.getFullYear();
-        const m = end.getMonth() - start.getMonth();
-        if (m < 0 || (m === 0 && end.getDate() < start.getDate())) age--;
-        return age < 0 ? 0 : age;
-    };
-
     const livingPeople = peopleArray.filter(p => !p.deathDate);
 
     // Age Groups Calculation
     const ageGroups = { '0-18': 0, '19-35': 0, '36-60': 0, '60+': 0 };
     livingPeople.forEach(p => {
-        const age = getAge(p.birthDate);
+        const age = calculateAge(p.birthDate);
         if (age !== null) {
             if (age <= 18) ageGroups['0-18']++;
             else if (age <= 35) ageGroups['19-35']++;
@@ -1166,46 +942,40 @@ function App() {
         }
     });
 
-    // Generation Calculation (using BFS) - This needs to be available for both charts.
-    const getGenerationMap = (peopleData: People): Map<string, number> => {
-        const generationMap = new Map<string, number>();
-        if (!peopleData['root']) return generationMap;
+    const generationMap = new Map<string, number>();
+        if (people['root']) {
+            const queue: [string, number][] = [['root', 0]];
+            const visited = new Set<string>(['root']);
+            generationMap.set('root', 0);
 
-        const queue: [string, number][] = [['root', 0]];
-        const visited = new Set<string>(['root']);
-        generationMap.set('root', 0);
+            let head = 0;
+            while (head < queue.length) {
+                const [personId, level] = queue[head++];
+                const person = people[personId];
+                if (!person) continue;
 
-        let head = 0;
-        while (head < queue.length) {
-            const [personId, level] = queue[head++];
-            const person = peopleData[personId];
-            if (!person) continue;
+                const processChildren = (p: Person) => {
+                    p.children.forEach(childId => {
+                        if (!visited.has(childId)) {
+                            visited.add(childId);
+                            generationMap.set(childId, level + 1);
+                            queue.push([childId, level + 1]);
+                        }
+                    });
+                };
+                
+                processChildren(person);
 
-            const processChildren = (p: Person) => {
-                p.children.forEach(childId => {
-                    if (!visited.has(childId)) {
-                        visited.add(childId);
-                        generationMap.set(childId, level + 1);
-                        queue.push([childId, level + 1]);
+                if (person.spouseId && !visited.has(person.spouseId)) {
+                    const spouse = people[person.spouseId];
+                    if (spouse) {
+                        visited.add(person.spouseId);
+                        generationMap.set(person.spouseId, level);
+                        processChildren(spouse);
                     }
-                });
-            };
-            
-            processChildren(person);
-
-            if (person.spouseId && !visited.has(person.spouseId)) {
-                const spouse = peopleData[person.spouseId];
-                if (spouse) {
-                    visited.add(person.spouseId);
-                    generationMap.set(person.spouseId, level);
-                    processChildren(spouse);
                 }
             }
         }
-        return generationMap;
-    };
-
-    const generationMap = getGenerationMap(people);
 
     const getGenerationData = (genMap: Map<string, number>): { labels: string[], data: number[] } => {
         const generationCounts: { [key: number]: number } = {};
@@ -1244,7 +1014,7 @@ function App() {
         const data = sortedGenerations.map(gen => {
             const genData = birthRateByGen[gen];
             const average = genData.mothers > 0 ? genData.children / genData.mothers : 0;
-            return parseFloat(average.toFixed(1)); // Round to one decimal place
+            return parseFloat(average.toFixed(1)); 
         });
 
         return { labels, data };
@@ -1271,7 +1041,7 @@ function App() {
     const addressCounts: { [key: string]: number } = {};
 
     livingPeople.forEach(p => {
-        const age = getAge(p.birthDate);
+        const age = calculateAge(p.birthDate);
         if (age !== null) {
             if (!oldestLivingPerson || age > oldestLivingPerson.age) {
                 oldestLivingPerson = { name: `${p.firstName} ${p.lastName}`, age: age };
@@ -1280,7 +1050,7 @@ function App() {
     });
 
     peopleArray.filter(p => p.deathDate).forEach(p => {
-        const age = getAge(p.birthDate, p.deathDate);
+        const age = calculateAge(p.birthDate, p.deathDate);
         if (age !== null) {
             totalLifespan += age;
             deceasedWithAge++;

@@ -33,7 +33,7 @@ const urlsToCache = [
   'https://cdn.jsdelivr.net/npm/chart.js',
   'https://aistudiocdn.com/react@^19.1.1',
   'https://aistudiocdn.com/react-dom@^19.1.1/',
-  'https://i.postimg.cc/XY7Tts2q/Geni-icon.png',
+  'https://i.postimg.cc/XNfDXTjn/Geni-Icon.png',
   'https://avatar.iran.liara.run/public/boy?username=Founder',
   'https://i.postimg.cc/DZBW1Cbf/Geni-cover.png'
 ];

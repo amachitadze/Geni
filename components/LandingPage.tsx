@@ -9,179 +9,192 @@ const ArrowRightIcon: React.FC<{ className?: string }> = ({ className }) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
     </svg>
 );
-const UsersIcon: React.FC<{ className?: string }> = ({ className }) => (
+
+const InfiniteIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.962a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5zM3.75 19.125a9.094 9.094 0 018.25-3.469 9.094 9.094 0 018.25 3.469m-16.5 0a9.094 9.094 0 003.741.479m7.5-2.962a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /> {/* Stylized infinite-like cloud/network */}
     </svg>
 );
-const ClockIcon: React.FC<{ className?: string }> = ({ className }) => (
+
+const ShieldCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
     </svg>
 );
-const GlobeIcon: React.FC<{ className?: string }> = ({ className }) => (
+
+const DevicePhoneMobileIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
     </svg>
 );
-const BuildIcon: React.FC<{ className?: string }> = ({ className }) => (
+
+const ChartBarIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-1a6 6 0 00-5.197-5.975M15 21H9" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
     </svg>
 );
-const StatsIcon: React.FC<{ className?: string }> = ({ className }) => (
+
+const LockClosedIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
     </svg>
 );
+
 const ShareIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.186 2.25 2.25 0 00-3.933 2.186z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.186 2.25 2.25 0 00-3.933 2.186z" />
+    </svg>
+);
+
+const DocumentIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+    </svg>
+);
+
+const UserGroupIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.962a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5zM3.75 19.125a9.094 9.094 0 018.25-3.469 9.094 9.094 0 018.25 3.469m-16.5 0a9.094 9.094 0 003.741.479m7.5-2.962a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" />
     </svg>
 );
 
 const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
+    const features = [
+        {
+            icon: <InfiniteIcon className="w-8 h-8 text-purple-600" />,
+            title: "შეზღუდვების გარეშე",
+            description: "დაამატეთ უსასრულო რაოდენობის პიროვნება. მშობლები, შვილები, მეუღლეები, დედმამიშვილები — ხე იზრდება თქვენთან ერთად."
+        },
+        {
+            icon: <LockClosedIcon className="w-8 h-8 text-green-600" />,
+            title: "100% კონფიდენციალური",
+            description: "თქვენი მონაცემები ინახება მხოლოდ თქვენს მოწყობილობაში. ჩვენ არ გვაქვს წვდომა თქვენს ოჯახურ ისტორიაზე."
+        },
+        {
+            icon: <ShareIcon className="w-8 h-8 text-blue-600" />,
+            title: "დაცული გაზიარება",
+            description: "გაუზიარეთ ხე ნათესავებს სპეციალური, დაშიფრული ბმულით. ინფორმაციის ნახვა მხოლოდ პაროლითაა შესაძლებელი."
+        },
+        {
+            icon: <ChartBarIcon className="w-8 h-8 text-orange-500" />,
+            title: "ჭკვიანი სტატისტიკა",
+            description: "ავტომატური ანალიზი: სიცოცხლის ხანგრძლივობა, თაობების განაწილება, პოპულარული სახელები და გენდერული ბალანსი."
+        },
+        {
+            icon: <DocumentIcon className="w-8 h-8 text-red-500" />,
+            title: "იმპორტი & ექსპორტი",
+            description: "შეინახეთ მონაცემები JSON ფორმატში სარეზერვო ასლისთვის ან გადმოწერეთ ხე მაღალი ხარისხის PDF ფაილად."
+        },
+        {
+            icon: <DevicePhoneMobileIcon className="w-8 h-8 text-indigo-500" />,
+            title: "მობილურზე მორგებული",
+            description: "სრულად ადაპტირებული ინტერფეისი. მართეთ თქვენი ხე ნებისმიერი ადგილიდან, ნებისმიერი მოწყობილობით."
+        }
+    ];
+
     return (
-        <div className="bg-white dark:bg-gray-900 min-h-screen text-gray-800 dark:text-gray-200 antialiased">
+        <div className="bg-white dark:bg-gray-900 min-h-screen text-gray-800 dark:text-gray-200 font-sans selection:bg-purple-200 dark:selection:bg-purple-900">
+            
             {/* Hero Section */}
-            <header 
-                className="relative h-screen flex items-center justify-center text-center text-white overflow-hidden"
-            >
+            <header className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
                 <div 
-                    className="absolute inset-0 bg-cover bg-center bg-fixed"
-                    style={{ backgroundImage: "url('https://i.postimg.cc/DZBW1Cbf/Geni-cover.png')" }}
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ 
+                        backgroundImage: "url('https://i.postimg.cc/DZBW1Cbf/Geni-cover.png')",
+                        filter: "brightness(0.4) blur(2px)" 
+                    }}
                 ></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/70 to-transparent"></div>
-                <div className="relative z-10 p-4 flex flex-col items-center">
-                    <h1 className="text-5xl md:text-7xl font-extrabold mb-4 drop-shadow-lg tracking-tight">
-                        ჩემი გენეალოგიური ხე
+                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-gray-900"></div>
+                
+                <div className="relative z-10 container mx-auto px-6 text-center">
+                    <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-purple-600/30 border border-purple-500/50 backdrop-blur-md text-purple-200 text-sm font-medium tracking-wide animate-fade-in-up">
+                        ანალოგი არ აქვს
+                    </div>
+                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-black mb-6 text-white tracking-tight drop-shadow-2xl animate-fade-in-up delay-100">
+                        თქვენი ისტორია,<br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500">უსასრულო</span> და დაცული.
                     </h1>
-                    <p className="text-lg md:text-2xl mb-10 max-w-3xl mx-auto drop-shadow-md text-gray-300">
-                        შექმენით, შეისწავლეთ და გაუზიარეთ თქვენი ოჯახის ისტორია მომავალ თაობებს.
+                    <p className="text-lg md:text-2xl mb-10 text-gray-300 max-w-3xl mx-auto leading-relaxed animate-fade-in-up delay-200">
+                        შექმენით გენეალოგიური ხე შეზღუდვების გარეშე. სრული კონფიდენციალურობა, დეტალური სტატისტიკა და მარტივი გაზიარება — ყველაფერი ერთ სივრცეში.
                     </p>
-                    <button 
-                        onClick={onEnter}
-                        className="group inline-flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-all transform hover:scale-105 shadow-lg focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50"
-                    >
-                        ხის ნახვა
-                        <ArrowRightIcon className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
-                    </button>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up delay-300">
+                        <button 
+                            onClick={onEnter}
+                            className="w-full sm:w-auto px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-2xl text-lg transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(147,51,234,0.5)] flex items-center justify-center gap-2"
+                        >
+                            დაიწყეთ ახლავე <ArrowRightIcon className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
             </header>
 
-            {/* Statistics Section */}
-            <section className="py-20 bg-gray-50 dark:bg-gray-800">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Features Grid */}
+            <section className="py-24 bg-gray-50 dark:bg-gray-900 relative">
+                <div className="container mx-auto px-6">
                     <div className="text-center mb-16">
-                        <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600 mb-4">
-                            საგვარეულო მასშტაბებში
-                        </h2>
-                        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-                            ჩვენი პლატფორმა აერთიანებს ათასობით ოჯახის ისტორიას, ქმნის რა წარსულის უნიკალურ გობელენს.
+                        <h2 className="text-3xl md:text-5xl font-bold mb-4 text-gray-900 dark:text-white">რატომ არის ჩვენი პლატფორმა უნიკალური?</h2>
+                        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                            ჩვენ გავაერთიანეთ სიმარტივე და სიმძლავრე, რათა თქვენი ოჯახის ისტორია იყოს დაცული და ადვილად სამართავი.
                         </p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Stat Card 1 */}
-                        <div className="relative p-8 rounded-xl text-white overflow-hidden shadow-2xl h-80 flex flex-col justify-end bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1580691269248-9366e4a2c2b2?q=80&w=1287&auto=format&fit=crop')"}}>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-                            <div className="relative z-10">
-                                <UsersIcon className="w-10 h-10 mb-4 text-purple-300"/>
-                                <h3 className="text-4xl font-bold">5,000+</h3>
-                                <p className="text-lg font-medium text-gray-200">დამატებული ადამიანი</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {features.map((feature, index) => (
+                            <div 
+                                key={index} 
+                                className="group bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 hover:border-purple-500/30 transition-all duration-300 hover:-translate-y-2"
+                            >
+                                <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                                    {feature.icon}
+                                </div>
+                                <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                    {feature.title}
+                                </h3>
+                                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    {feature.description}
+                                </p>
                             </div>
-                        </div>
-                        {/* Stat Card 2 */}
-                        <div className="relative p-8 rounded-xl text-white overflow-hidden shadow-2xl h-80 flex flex-col justify-end bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1444492417255-3d026c7e2833?q=80&w=1287&auto=format&fit=crop')"}}>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-                            <div className="relative z-10">
-                                <ClockIcon className="w-10 h-10 mb-4 text-purple-300"/>
-                                <h3 className="text-4xl font-bold">12+</h3>
-                                <p className="text-lg font-medium text-gray-200">დაფიქსირებული თაობა</p>
-                            </div>
-                        </div>
-                        {/* Stat Card 3 */}
-                        <div className="relative p-8 rounded-xl text-white overflow-hidden shadow-2xl h-80 flex flex-col justify-end bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1543946207-6c0a7e033e8b?q=80&w=1287&auto=format&fit=crop')"}}>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-                            <div className="relative z-10">
-                                <GlobeIcon className="w-10 h-10 mb-4 text-purple-300"/>
-                                <h3 className="text-4xl font-bold">15+</h3>
-                                <p className="text-lg font-medium text-gray-200">ქვეყანა და რეგიონი</p>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
             </section>
 
-            {/* Features Section */}
-            <main className="py-24 px-4">
-                <div className="max-w-6xl mx-auto space-y-24">
-                    {/* Feature 1 */}
-                    <div className="grid md:grid-cols-2 gap-12 items-center">
-                        <div className="order-2 md:order-1">
-                            <div className="inline-flex items-center gap-3 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-semibold px-4 py-1 rounded-full mb-4">
-                               <BuildIcon className="w-5 h-5" /> აწყობა
-                            </div>
-                            <h3 className="text-3xl font-bold mb-4">ააწყვეთ და გამოსახეთ</h3>
-                            <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
-                                მარტივად დაამატეთ ოჯახის წევრები, განსაზღვრეთ ურთიერთობები და იხილეთ, როგორ ცოცხლდება თქვენი წარმომავლობა ინტერაქტიულ ხეზე.
-                            </p>
-                        </div>
-                        <div className="order-1 md:order-2">
-                           <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070&auto=format&fit=crop" alt="Building a family tree" className="rounded-xl shadow-2xl aspect-video object-cover" />
-                        </div>
-                    </div>
-                     {/* Feature 2 */}
-                    <div className="grid md:grid-cols-2 gap-12 items-center">
-                        <div>
-                           <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop" alt="Analyzing data" className="rounded-xl shadow-2xl aspect-video object-cover" />
-                        </div>
-                        <div>
-                           <div className="inline-flex items-center gap-3 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-semibold px-4 py-1 rounded-full mb-4">
-                                <StatsIcon className="w-5 h-5" /> ანალიზი
-                            </div>
-                            <h3 className="text-3xl font-bold mb-4">გააანალიზეთ მონაცემები</h3>
-                            <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
-                                მიიღეთ საინტერესო სტატისტიკა: დემოგრაფია, პოპულარული სახელები, სიცოცხლის ხანგრძლივობა და სხვა.
-                            </p>
-                        </div>
-                    </div>
-                     {/* Feature 3 */}
-                    <div className="grid md:grid-cols-2 gap-12 items-center">
-                        <div className="order-2 md:order-1">
-                            <div className="inline-flex items-center gap-3 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-semibold px-4 py-1 rounded-full mb-4">
-                                <ShareIcon className="w-5 h-5" /> გაზიარება
-                            </div>
-                            <h3 className="text-3xl font-bold mb-4">შეინახეთ და გააზიარეთ</h3>
-                            <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
-                                დააექსპორტეთ თქვენი ხე PDF/JSON ფორმატში, ან უსაფრთხოდ გაუზიარეთ ოჯახის წევრებს დაშიფრული ბმულით.
-                            </p>
-                        </div>
-                        <div className="order-1 md:order-2">
-                            <img src="https://images.unsplash.com/photo-1543269865-cbf427effbad?q=80&w=2070&auto=format&fit=crop" alt="Sharing with family" className="rounded-xl shadow-2xl aspect-video object-cover" />
-                        </div>
-                    </div>
-                </div>
-            </main>
-            
-            {/* Final CTA */}
-            <section className="bg-gray-50 dark:bg-gray-800">
-                <div className="max-w-4xl mx-auto py-16 px-4 text-center">
-                    <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600 mb-6">
-                        მზად ხართ თქვენი ისტორიის დასაწყებად?
-                    </h2>
-                     <button 
+            {/* How It Works / Footer CTA */}
+            <section className="py-20 bg-gray-900 text-white relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-purple-900/20 to-pink-900/20 pointer-events-none"></div>
+                <div className="container mx-auto px-6 text-center relative z-10">
+                    <h2 className="text-3xl md:text-4xl font-bold mb-8">შეინახეთ წარსული მომავლისთვის</h2>
+                    <p className="text-gray-300 mb-10 max-w-xl mx-auto">
+                        თქვენი ოჯახის ისტორია იმსახურებს საუკეთესო ადგილს. დაიწყეთ დღესვე, სრულიად უფასოდ.
+                    </p>
+                    <button 
                         onClick={onEnter}
-                        className="group inline-flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-all transform hover:scale-105 shadow-lg focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50"
+                        className="inline-flex items-center justify-center px-8 py-3 border border-gray-600 hover:border-white rounded-full text-lg font-medium transition-colors hover:bg-white hover:text-gray-900"
                     >
-                        დაიწყეთ ახლავე
-                        <ArrowRightIcon className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
+                        ხის გახსნა
                     </button>
                 </div>
             </section>
-            
-            {/* Footer */}
-            <footer className="bg-gray-100 dark:bg-gray-900 py-6 text-center">
-                <p className="text-gray-500 dark:text-gray-400">&copy; {new Date().getFullYear()} გენეალოგიური ხე. ყველა უფლება დაცულია.</p>
+
+            <footer className="bg-gray-50 dark:bg-black py-8 border-t border-gray-200 dark:border-gray-800">
+                <div className="container mx-auto px-6 text-center text-gray-500 dark:text-gray-500 text-sm">
+                    <p className="flex items-center justify-center gap-1 flex-wrap">
+                        <span>&copy; {new Date().getFullYear()} გენეალოგიური ხე. ყველა უფლება დაცულია.</span>
+                        <span className="flex items-center gap-1">
+                            შექმნილია
+                            <a href="https://bit.ly/av-ma" target="_blank" rel="noopener noreferrer" className="inline-block transition-opacity hover:opacity-80">
+                                <img 
+                                    src="https://i.postimg.cc/c1T2NJgV/avma.png" 
+                                    alt="AvMa" 
+                                    className="h-3 w-auto" 
+                                    style={{ display: 'inline', verticalAlign: 'middle' }}
+                                />
+                            </a>
+                            -ს მიერ
+                        </span>
+                    </p>
+                </div>
             </footer>
         </div>
     );
