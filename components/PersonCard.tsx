@@ -1,5 +1,6 @@
 import React from 'react';
 import { Person, Gender } from '../types';
+import { PlusIcon, AncestorsIcon, DefaultAvatar } from './Icons';
 
 interface PersonCardProps {
   person: Person;
@@ -28,28 +29,6 @@ const genderStyles = {
     buttonCompact: 'bg-pink-100 hover:bg-pink-200 text-pink-700 dark:bg-pink-800 dark:hover:bg-pink-700 dark:text-pink-200',
   },
 };
-
-const PlusIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-    </svg>
-);
-
-const DefaultAvatar: React.FC<{ className?: string }> = ({ className }) => (
-    <div className={`flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 ${className}`}>
-        <svg xmlns="http://www.w3.org/2000/svg" className="text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{width: '60%', height: '60%'}}>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-    </div>
-);
-
-const AncestorsIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 18.75 7.5-7.5 7.5 7.5" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 7.5-7.5 7.5 7.5" />
-    </svg>
-);
-
 
 const PersonCard: React.FC<PersonCardProps> = ({ person, onAdd, onShowDetails, onNavigate, isHighlighted, isConnectionHighlighted, isHoverConnected, onSetHover, viewMode }) => {
   const styles = genderStyles[person.gender];

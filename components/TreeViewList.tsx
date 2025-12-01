@@ -1,5 +1,6 @@
 import React from 'react';
 import { Person, People, Gender } from '../types';
+import { ChevronRightIcon, DefaultAvatar } from './Icons';
 
 interface TreeViewListProps {
   rootId: string;
@@ -8,19 +9,6 @@ interface TreeViewListProps {
   onShowDetails: (personId: string) => void;
   highlightedPersonId: string | null;
 }
-
-const ChevronRightIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-    </svg>
-);
-const DefaultAvatar: React.FC<{ className?: string }> = ({ className }) => (
-    <div className={`flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 ${className}`}>
-        <svg xmlns="http://www.w3.org/2000/svg" className="text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{width: '60%', height: '60%'}}>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-    </div>
-);
 
 const ListItem: React.FC<{ 
     person: Person, 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { CloseIcon } from './Icons';
 
 interface PasswordPromptModalProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ const PasswordPromptModal: React.FC<PasswordPromptModalProps> = ({ isOpen, onSub
         <header className="flex items-start justify-between mb-4">
           <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600">დაშიფრული ხის გახსნა</h2>
           <button onClick={onClose} className="p-2 -mt-2 -mr-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" aria-label="დახურვა">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+             <CloseIcon className="h-6 w-6" />
           </button>
         </header>
         <p className="text-gray-600 dark:text-gray-400 mb-4">ამ გენეალოგიური ხის სანახავად, გთხოვთ, შეიყვანოთ პაროლი.</p>
