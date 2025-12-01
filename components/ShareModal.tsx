@@ -31,6 +31,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
   const [serviceUsed, setServiceUsed] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [includeImages, setIncludeImages] = useState(true);
 
   const generatePassword = () => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -94,6 +95,25 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
     setServiceUsed('');
 
     try {
+      // 0. Manual Check: If user explicitly disabled images
+      if (!includeImages) {
+          console.log("User disabled images. Stripping and uploading to JsonBlob...");
+          const liteData = removeImages(data);
+          const liteJsonString = JSON.stringify(liteData);
+          const liteCompressed = pako.deflate(liteJsonString);
+          const liteCompressedBase64 = bufferToBase64(liteCompressed.buffer);
+          const liteEncryptedData = await encryptData(liteCompressedBase64, password);
+
+          const blobId = await uploadToJsonBlob(liteEncryptedData);
+          if (blobId) {
+              const url = `${window.location.origin}${window.location.pathname}?blobId=${blobId}`;
+              setShareUrl(url);
+              setServiceUsed('JsonBlob (სურათების გარეშე)');
+              setIsLoading(false);
+              return;
+          }
+      }
+
       // 1. Prepare Full Data (with images)
       const fullJsonString = JSON.stringify(data);
       const fullCompressed = pako.deflate(fullJsonString);
@@ -217,7 +237,20 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">2. ბმულის გენერირება</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">2. კონფიგურაცია</label>
+            <div className="flex items-center gap-2 mb-2 p-2 bg-gray-50 dark:bg-gray-700/30 rounded border border-gray-200 dark:border-gray-700">
+                <input 
+                    type="checkbox" 
+                    id="includeImages" 
+                    checked={includeImages} 
+                    onChange={(e) => setIncludeImages(e.target.checked)}
+                    className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <label htmlFor="includeImages" className="text-sm font-medium text-gray-700 dark:text-gray-300 select-none cursor-pointer">
+                    გავაზიარო სურათებით
+                </label>
+            </div>
+            
             <button onClick={handleGenerateLink} disabled={isLoading || !password} className="w-full px-4 py-2 rounded-md bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 dark:disabled:bg-purple-800 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-white">
                 {isLoading ? 'იტვირთება...' : <><ShareIcon className="w-5 h-5"/> ბმულის შექმნა</>}
             </button>
